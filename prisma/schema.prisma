@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ResourceType {
+  EVENT
+  EXHIBITOR
+  PRODUCT
+}
+
+model User {
+  id            String         @id @default(uuid())
+  firstname     String
+  lastname      String
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(USER)
+  avatarAssetId String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  // relations
+  avatarAsset   Asset?         @relation("AssetUserAvatar", fields: [avatarAssetId], references: [id], onDelete: SetNull)
+  eventsCreated Event[]        @relation("EventCreator")
+  speakersFor   EventSpeaker[]
+  attendees     Attendee[]
+  favorites     Favorite[]
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  AuditLog      AuditLog[]
+  Exhibitor     Exhibitor[]
+  recents       Recent[]
+}
+
+model Event {
+  id          String         @id @default(uuid())
+  name        String
+  title       String
+  description String?
+  color       String?
+  start       DateTime // stored in UTC (timestamptz)
+  end         DateTime
+  timed       Boolean        @default(true)
+  location    String?
+  exhibitorId String?
+  timezone    String? // IANA tz, e.g. "Asia/Tehran"
+  published   Boolean        @default(false)
+  createdById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+  // relations
+  createdBy   User?          @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  exhibitor   Exhibitor?     @relation(fields: [exhibitorId], references: [id], onDelete: SetNull)
+  speakers    EventSpeaker[]
+  attendees   Attendee[]
+  tags        TagOnEvent[]
+  assets      AssetOnEvent[]
+
+  @@index([start])
+}
+
+model EventSpeaker {
+  id      String  @id @default(uuid())
+  eventId String
+  userId  String
+  role    String? // e.g. speaker/moderator
+  order   Int?    @default(0)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model Exhibitor {
+  id            String             @id @default(uuid())
+  name          String
+  title         String?
+  description   String?
+  website       String?
+  location      String?
+  sponsor       Boolean            @default(false)
+  favoriteCount Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  deletedAt     DateTime?
+  createdById   String?
+  createdBy     User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  products      Product[]
+  assets        AssetOnExhibitor[]
+  tags          TagOnExhibitor[]
+  events        Event[]
+
+  @@index([name])
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  exhibitorId String
+  name        String
+  description String?
+  price       Decimal?         @db.Decimal(12, 2)
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+  exhibitor   Exhibitor        @relation(fields: [exhibitorId], references: [id], onDelete: Cascade)
+  assets      AssetOnProduct[]
+
+  @@index([name])
+}
+
+model Attendee {
+  id         String   @id @default(uuid())
+  userId     String?
+  eventId    String
+  name       String
+  email      String
+  ticketType String?
+  checkedIn  Boolean  @default(false)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+}
+
+model Favorite {
+  id           String       @id @default(uuid())
+  userId       String
+  resourceType ResourceType
+  resourceId   String
+  createdAt    DateTime     @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String? // null = broadcast
+  type      String?
+  icon      String?
+  color     String?
+  message   String
+  data      Json?
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Asset {
+  id              String             @id @default(uuid())
+  url             String
+  type            String? // image/video/document
+  meta            Json?
+  createdBy       String?
+  createdAt       DateTime           @default(now())
+  deletedAt       DateTime?
+  // relations convenience (many-to-many join tables below)
+  productLinks    AssetOnProduct[]
+  exhibitorLinks  AssetOnExhibitor[]
+  eventLinks      AssetOnEvent[]
+  userAvatarLinks User[]             @relation("AssetUserAvatar")
+}
+
+model AssetOnProduct {
+  id        String  @id @default(uuid())
+  assetId   String
+  productId String
+  role      String? // "cover", "gallery", "thumb"
+  asset     Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model AssetOnExhibitor {
+  id          String    @id @default(uuid())
+  assetId     String
+  exhibitorId String
+  role        String?
+  asset       Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  exhibitor   Exhibitor @relation(fields: [exhibitorId], references: [id], onDelete: Cascade)
+}
+
+model AssetOnEvent {
+  id      String  @id @default(uuid())
+  assetId String
+  eventId String
+  role    String?
+  asset   Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id         String           @id @default(uuid())
+  name       String           @unique
+  title      String?
+  meta       Json?
+  createdAt  DateTime         @default(now())
+  events     TagOnEvent[]
+  exhibitors TagOnExhibitor[]
+}
+
+model TagOnEvent {
+  id      String @id @default(uuid())
+  tagId   String
+  eventId String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, eventId])
+}
+
+model TagOnExhibitor {
+  id          String    @id @default(uuid())
+  tagId       String
+  exhibitorId String
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  exhibitor   Exhibitor @relation(fields: [exhibitorId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, exhibitorId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String // store hashed token
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String? // actor (nullable for system actions)
+  action    String
+  entity    String
+  entityId  String?
+  data      Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Recent {
+  id           String       @id @default(uuid())
+  userId       String
+  resourceType ResourceType
+  resourceId   String
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([resourceType, resourceId])
+}
