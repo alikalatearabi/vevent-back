@@ -8,15 +8,18 @@ RUN apk add --no-cache libc6-compat openssl
 # Dependencies stage - install all dependencies
 FROM base AS dependencies
 COPY package*.json ./
-RUN npm ci
+COPY prisma ./prisma
+RUN npm ci --ignore-scripts
+RUN npx prisma generate
 
 # Development stage - for local development with hot reload
 FROM base AS development
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
-COPY . .
+COPY prisma ./prisma
+RUN npm ci --ignore-scripts
 RUN npx prisma generate
+COPY . .
 EXPOSE 3000
 CMD ["npm", "run", "start:dev"]
 
