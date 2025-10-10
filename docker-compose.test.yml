@@ -1,0 +1,25 @@
+# Docker Compose configuration for testing
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit
+
+version: '3.8'
+
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: veventdb_test
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  backend:
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vevent}:${POSTGRES_PASSWORD:-veventpass}@postgres:5432/veventdb_test?schema=public
+    command: |
+      sh -c "
+        npx prisma db push --accept-data-loss &&
+        npm test
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+

@@ -143,9 +143,7 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Docker
-.dockerignore
-
 # Misc
 *.tgz
 *.tar.gz
+cookies*.txt

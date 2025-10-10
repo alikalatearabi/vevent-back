@@ -12,6 +12,15 @@ class AppController {
   getRoot() {
     return { message: 'Hello from vevent-back' };
   }
+
+  @Get('health')
+  getHealth() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
+  }
 }
 
 @Module({
