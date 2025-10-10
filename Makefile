@@ -72,7 +72,7 @@ redis-cli: ## Access Redis CLI
 	docker-compose exec redis redis-cli -a redispass
 
 health: ## Check backend health
-	@curl -s http://localhost:3000/health || echo "Backend is not responding"
+	@curl -s http://localhost:3001/health || echo "Backend is not responding"
 
 install: ## Install dependencies locally
 	npm install

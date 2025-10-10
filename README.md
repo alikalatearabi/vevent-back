@@ -53,8 +53,8 @@ NestJS-based backend API for the VEvent platform - an event management system wi
    - Push database schema
 
 3. **Access the application:**
-   - API: http://localhost:3000
-   - API Documentation: http://localhost:3000/api/docs
+   - API: http://localhost:3001
+   - API Documentation: http://localhost:3001/api/docs
    - pgAdmin: http://localhost:5050
 
 ### Option 2: Local Development
@@ -123,7 +123,7 @@ See [DOCKER.md](./DOCKER.md) for detailed Docker documentation.
 ## API Documentation
 
 Once the application is running, visit:
-- **Swagger UI**: http://localhost:3000/api/docs
+- **Swagger UI**: http://localhost:3001/api/docs
 
 The API documentation is automatically generated from the code and includes:
 - All available endpoints
@@ -204,7 +204,7 @@ Key environment variables (see `.env.example`):
 
 ```env
 NODE_ENV=development
-PORT=3000
+PORT=3001
 DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 JWT_SECRET=your-secret-key
 JWT_REFRESH_SECRET=your-refresh-secret-key
@@ -216,7 +216,7 @@ JWT_REFRESH_TOKEN_EXPIRES_IN=7d
 
 The Docker Compose setup includes:
 
-1. **Backend (NestJS)**: Port 3000
+1. **Backend (NestJS)**: Port 3001
 2. **PostgreSQL**: Port 5432
 3. **pgAdmin**: Port 5050 (Database management UI)
 4. **Redis**: Port 6379 (Cache and session store)

@@ -41,7 +41,7 @@ jobs:
         run: |
           docker-compose up -d backend
           sleep 10
-          curl --fail http://localhost:3000/health || exit 1
+          curl --fail http://localhost:3001/health || exit 1
 
       - name: Show logs on failure
         if: failure()

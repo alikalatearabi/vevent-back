@@ -20,7 +20,7 @@ COPY prisma ./prisma
 RUN npm ci --ignore-scripts
 RUN npx prisma generate
 COPY . .
-EXPOSE 3000
+EXPOSE 3001
 CMD ["npm", "run", "start:dev"]
 
 # Builder stage - build the application
@@ -51,11 +51,11 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
 USER nestjs
 
-EXPOSE 3000
+EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 CMD ["node", "dist/main.js"]
 
