@@ -52,4 +52,13 @@ export class UsersController {
   async addRecent(@Req() req: any, @Body() dto: CreateRecentDto) {
     return this.usersService.addRecent(req.user.sub, dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Get('me/events')
+  @ApiOperation({ summary: 'Get user calendar - events user created or registered for' })
+  @ApiResponse({ status: 200, description: 'User events calendar' })
+  async getUserEvents(@Req() req: any) {
+    return this.usersService.getUserEvents(req.user.sub);
+  }
 }

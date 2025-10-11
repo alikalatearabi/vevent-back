@@ -48,6 +48,94 @@ export class UsersService {
     return (this.prisma as any).recent.create({ data: { userId, resourceType: dto.resourceType, resourceId: dto.resourceId, metadata: dto.metadata } });
   }
 
+  // user events calendar
+  async getUserEvents(userId: string) {
+    // Get events user created
+    const createdEvents = await this.prisma.event.findMany({
+      where: { 
+        createdById: userId,
+        deletedAt: null 
+      },
+      select: {
+        id: true,
+        name: true,
+        title: true,
+        description: true,
+        start: true,
+        end: true,
+        timed: true,
+        location: true,
+        timezone: true,
+        published: true,
+        color: true,
+        createdAt: true
+      },
+      orderBy: { start: 'asc' }
+    });
+
+    // Get events user is registered for as attendee
+    const registeredEvents = await this.prisma.attendee.findMany({
+      where: { 
+        userId: userId,
+        event: {
+          deletedAt: null
+        }
+      },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+            title: true,
+            description: true,
+            start: true,
+            end: true,
+            timed: true,
+            location: true,
+            timezone: true,
+            published: true,
+            color: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { 
+        event: { start: 'asc' }
+      }
+    });
+
+    // Combine and format results
+    const created = createdEvents.map(event => ({
+      ...event,
+      userRole: 'creator',
+      registrationDate: event.createdAt
+    }));
+
+    const registered = registeredEvents.map(({ event, createdAt }) => ({
+      ...event,
+      userRole: 'attendee',
+      registrationDate: createdAt
+    }));
+
+    // Merge and remove duplicates (in case user created and also registered)
+    const allEvents = [...created, ...registered];
+    const uniqueEvents = allEvents.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
+
+    // Sort by start date
+    uniqueEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+    return {
+      data: uniqueEvents,
+      meta: {
+        total: uniqueEvents.length,
+        created: created.length,
+        registered: registered.length
+      }
+    };
+  }
+
   private async checkResourceExists(resourceType: any, resourceId: string) {
     try {
       switch (resourceType) {
