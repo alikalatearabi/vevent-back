@@ -64,8 +64,10 @@ export class AuthService {
   }
 
   async refresh(raw: string, res: any) {
+    if (!raw) throw new UnauthorizedException('No refresh token provided');
+    
     const token = await this.refreshTokenService.findByRaw(raw);
-    if (!token || token.revoked || token.expiresAt < new Date()) throw new UnauthorizedException('Invalid refresh');
+    if (!token || token.revoked || token.expiresAt < new Date()) throw new UnauthorizedException('Invalid refresh token');
 
     // rotate
     await this.refreshTokenService.revoke(token.id);
@@ -78,10 +80,12 @@ export class AuthService {
   }
 
   async logout(raw: string, res: any) {
-    const token = await this.refreshTokenService.findByRaw(raw);
-    if (token) await this.refreshTokenService.revoke(token.id);
+    if (raw) {
+      const token = await this.refreshTokenService.findByRaw(raw);
+      if (token) await this.refreshTokenService.revoke(token.id);
+    }
     res.clearCookie('refreshToken', { path: '/' });
-    return { ok: true };
+    return { message: 'Logged out successfully' };
   }
 
   async createAccessToken(userId: string) {
