@@ -90,11 +90,19 @@ export class AuthService {
   }
 
   cookieOptions(maxAgeSeconds: number) {
+    // Get the environment or default configuration
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     return {
       httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'lax',
-      domain: process.env.COOKIE_DOMAIN || 'localhost',
+      // In production, cookies should always be secure (HTTPS only)
+      // In development, we allow non-secure cookies for localhost testing
+      secure: isProduction ? true : (process.env.COOKIE_SECURE === 'true'),
+      // SameSite=None is required for cross-origin cookies
+      // But it requires secure=true, so we use 'lax' for non-secure environments
+      sameSite: isProduction ? 'none' : 'lax',
+      // Only set domain if specified in env, otherwise browser will use current domain
+      ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
       path: '/',
       maxAge: maxAgeSeconds * 1000,
     };

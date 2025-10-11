@@ -5,7 +5,16 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  
+  // Configure CORS to allow requests from any origin with credentials
+  app.enableCors({
+    origin: true, // Allow any origin
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true, // Allow credentials (cookies, authorization headers)
+    allowedHeaders: 'Content-Type,Accept,Authorization',
+    exposedHeaders: 'Content-Disposition',
+  });
+  
   app.use(cookieParser());
 
   const config = new DocumentBuilder()
