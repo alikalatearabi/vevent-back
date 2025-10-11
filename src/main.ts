@@ -8,6 +8,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:3000',
+      'http://0.0.0.0:3000',
       'http://185.149.192.60',
       'https://185.149.192.60',
       // Add your frontend domain when it's ready
