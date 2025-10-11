@@ -24,12 +24,23 @@ async function bootstrap() {
         process.env.FRONTEND_URL,     // Environment variable
       ].filter(Boolean);
       
-      // Allow all origins in development
-      if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
-        callback(null, true);
+      // In development, allow all localhost/127.0.0.1/0.0.0.0 origins
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isLocalhost = origin && (
+        origin.includes('localhost') || 
+        origin.includes('127.0.0.1') || 
+        origin.includes('0.0.0.0')
+      );
+      
+      if (isDevelopment && isLocalhost) {
+        console.log('CORS: Allowing development origin:', origin);
+        callback(null, origin);
+      } else if (allowedOrigins.includes(origin)) {
+        console.log('CORS: Allowing whitelisted origin:', origin);
+        callback(null, origin);
       } else {
         console.log('CORS blocked origin:', origin);
-        callback(new Error('Not allowed by CORS'));
+        callback(null, false);
       }
     },
     credentials: true,
