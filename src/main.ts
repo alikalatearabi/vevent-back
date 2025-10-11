@@ -20,26 +20,39 @@ async function bootstrap() {
         'http://0.0.0.0:3000',        // Nuxt 0.0.0.0 binding
         'http://10.43.123.8:3000',    // Local network IP
         'http://185.149.192.60:3000', // Production frontend
+        'http://185.236.36.158:3000', // Server public IP
         'http://185.149.192.60',      // Production frontend (without port)
         process.env.FRONTEND_URL,     // Environment variable
       ].filter(Boolean);
       
-      // In development, allow all localhost/127.0.0.1/0.0.0.0 origins
+      // In development, allow more flexible origins
       const isDevelopment = process.env.NODE_ENV === 'development';
-      const isLocalhost = origin && (
-        origin.includes('localhost') || 
-        origin.includes('127.0.0.1') || 
-        origin.includes('0.0.0.0')
-      );
       
-      if (isDevelopment && isLocalhost) {
-        console.log('CORS: Allowing development origin:', origin);
-        callback(null, origin);
-      } else if (allowedOrigins.includes(origin)) {
+      if (isDevelopment) {
+        // Allow localhost variants
+        const isLocalhost = origin && (
+          origin.includes('localhost') || 
+          origin.includes('127.0.0.1') || 
+          origin.includes('0.0.0.0')
+        );
+        
+        // Allow any IP on port 3000 (for development)
+        const isPort3000 = origin && origin.match(/^https?:\/\/[\d.]+:3000$/);
+        
+        if (isLocalhost || isPort3000) {
+          console.log('CORS: Allowing development origin:', origin);
+          callback(null, origin);
+          return;
+        }
+      }
+      
+      // Check whitelist
+      if (allowedOrigins.includes(origin)) {
         console.log('CORS: Allowing whitelisted origin:', origin);
         callback(null, origin);
       } else {
         console.log('CORS blocked origin:', origin);
+        console.log('Allowed origins:', allowedOrigins);
         callback(null, false);
       }
     },
