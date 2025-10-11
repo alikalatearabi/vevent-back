@@ -72,12 +72,14 @@ async function seedCategoriesAndTags() {
     }
   ];
 
+  const createdCategories: any = {};
   for (const category of categories) {
-    await prisma.category.upsert({
+    const cat = await prisma.category.upsert({
       where: { name: category.name },
       update: category,
       create: category
     });
+    createdCategories[category.name] = cat;
   }
 
   // Create tags
@@ -99,16 +101,66 @@ async function seedCategoriesAndTags() {
     { name: 'luxury', title: 'Luxury', color: '#7C3AED' }
   ];
 
+  const createdTags: any = {};
   for (const tag of tags) {
-    await prisma.tag.upsert({
+    const t = await prisma.tag.upsert({
       where: { name: tag.name },
       update: tag,
       create: tag
     });
+    createdTags[tag.name] = t;
   }
 
   console.log('✅ Categories and tags seeded successfully!');
   console.log(`📊 Created ${categories.length} categories and ${tags.length} tags`);
+
+  // Update existing products with categories
+  console.log('🔄 Assigning categories to existing products...');
+  
+  const products = await prisma.product.findMany({
+    where: { deletedAt: null },
+    select: { id: true, name: true, categoryId: true }
+  });
+
+  if (products.length > 0) {
+    // Map product names to categories
+    const categoryMapping: { [key: string]: string } = {
+      'electronics': ['laptop', 'phone', 'computer', 'tablet', 'camera', 'headphone', 'speaker', 'monitor', 'keyboard', 'mouse', 'charger', 'cable'],
+      'fashion': ['shirt', 't-shirt', 'dress', 'pants', 'shoes', 'jacket', 'bag', 'watch', 'jewelry', 'hat', 'socks', 'belt'],
+      'home-garden': ['furniture', 'lamp', 'chair', 'table', 'sofa', 'bed', 'plant', 'tool', 'paint', 'decoration'],
+      'sports': ['ball', 'bike', 'fitness', 'gym', 'yoga', 'running', 'swimming', 'tennis', 'golf', 'skateboard'],
+      'books-media': ['book', 'magazine', 'cd', 'dvd', 'vinyl', 'comic', 'novel', 'textbook'],
+      'automotive': ['car', 'tire', 'oil', 'battery', 'brake', 'engine', 'filter', 'wiper'],
+      'food-beverage': ['coffee', 'tea', 'water', 'juice', 'snack', 'chocolate', 'candy', 'wine', 'beer'],
+      'health-beauty': ['cream', 'lotion', 'shampoo', 'soap', 'perfume', 'makeup', 'vitamin', 'supplement'],
+      'services': ['service', 'consultation', 'repair', 'maintenance', 'installation']
+    };
+
+    let updatedCount = 0;
+    for (const product of products) {
+      if (!product.categoryId) {
+        // Find matching category based on product name
+        let assignedCategory = 'services'; // default
+        
+        const productNameLower = product.name.toLowerCase();
+        for (const [categoryName, keywords] of Object.entries(categoryMapping)) {
+          if (keywords.some(keyword => productNameLower.includes(keyword))) {
+            assignedCategory = categoryName;
+            break;
+          }
+        }
+
+        await prisma.product.update({
+          where: { id: product.id },
+          data: { categoryId: createdCategories[assignedCategory].id }
+        });
+        updatedCount++;
+      }
+    }
+    console.log(`✅ Updated ${updatedCount} products with categories`);
+  } else {
+    console.log('ℹ️  No existing products to update');
+  }
 }
 
 async function main() {
