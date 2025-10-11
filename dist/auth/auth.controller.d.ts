@@ -40,6 +40,6 @@ export declare class AuthController {
         accessToken: string;
     }>;
     logout(req: any, res: any): Promise<{
-        ok: boolean;
+        message: string;
     }>;
 }

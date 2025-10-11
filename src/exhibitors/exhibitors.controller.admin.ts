@@ -1,17 +1,21 @@
-import { Controller, Post, Body, UseGuards, Patch, Param, Delete, UploadedFiles, UseInterceptors, Req, Res, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Patch, Param, Delete, UploadedFiles, UseInterceptors, Req, Res, NotFoundException, BadRequestException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ExhibitorsService } from './exhibitors.service';
 import { CreateExhibitorDto } from './dto/create-exhibitor.dto';
 import { UpdateExhibitorDto } from './dto/update-exhibitor.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiResponse } from '@nestjs/swagger';
+import { AssetService } from '../common/services/asset.service';
 import type { Multer } from 'multer';
 
 @ApiTags('Exhibitors')
 @ApiBearerAuth()
 @Controller('api/v1/exhibitors')
 export class ExhibitorsAdminController {
-  constructor(private readonly exhibitorsService: ExhibitorsService) {}
+  constructor(
+    private readonly exhibitorsService: ExhibitorsService,
+    private readonly assetService: AssetService,
+  ) {}
 
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Create exhibitor' })
@@ -47,18 +51,45 @@ export class ExhibitorsAdminController {
   @ApiOperation({ summary: 'Upload exhibitor assets' })
   @ApiConsumes('multipart/form-data')
   @Post(':id/assets')
-  @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(FilesInterceptor('files', 10)) // Max 10 files
   async uploadAssets(@Param('id') id: string, @UploadedFiles() files: Array<Express.Multer.File>, @Req() req: any) {
-    // This minimal implementation expects files uploaded and accessible locally via /uploads (not implemented).
-    // In production, upload to S3 and create Asset records.
-    if (!files || files.length === 0) return [];
-    const created: any[] = [];
-    for (const f of files) {
-      const url = `/uploads/${f.filename}`; // placeholder
-      const asset = await (req.app.get('PRISMA') as any).asset.create({ data: { url } });
-      const link = await this.exhibitorsService.linkAsset(id, asset.id, 'gallery');
-      created.push({ id: asset.id, url, role: 'gallery' });
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
     }
-    return created;
+
+    const userId = req.user?.sub;
+    const uploadedAssets = [];
+
+    for (const file of files) {
+      // Validate image file
+      this.assetService.validateImageFile(file);
+
+      // Upload to MinIO and create asset record
+      const asset = await this.assetService.createAsset(
+        file,
+        `exhibitors/${id}`,
+        userId,
+        { exhibitorId: id },
+      );
+
+      // Link asset to exhibitor
+      const link = await this.assetService.linkAssetToExhibitor(
+        asset.id,
+        id,
+        'gallery', // Default role
+      );
+
+      uploadedAssets.push({
+        id: asset.id,
+        url: asset.url,
+        role: link.role,
+        originalName: file.originalname,
+      });
+    }
+
+    return {
+      message: `${uploadedAssets.length} assets uploaded successfully`,
+      assets: uploadedAssets,
+    };
   }
 }

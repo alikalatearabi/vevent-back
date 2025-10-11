@@ -20,9 +20,11 @@ const create_exhibitor_dto_1 = require("./dto/create-exhibitor.dto");
 const update_exhibitor_dto_1 = require("./dto/update-exhibitor.dto");
 const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
+const asset_service_1 = require("../common/services/asset.service");
 let ExhibitorsAdminController = class ExhibitorsAdminController {
-    constructor(exhibitorsService) {
+    constructor(exhibitorsService, assetService) {
         this.exhibitorsService = exhibitorsService;
+        this.assetService = assetService;
     }
     async create(dto, req, res) {
         const userId = req.user?.sub;
@@ -39,16 +41,26 @@ let ExhibitorsAdminController = class ExhibitorsAdminController {
         return;
     }
     async uploadAssets(id, files, req) {
-        if (!files || files.length === 0)
-            return [];
-        const created = [];
-        for (const f of files) {
-            const url = `/uploads/${f.filename}`;
-            const asset = await req.app.get('PRISMA').asset.create({ data: { url } });
-            const link = await this.exhibitorsService.linkAsset(id, asset.id, 'gallery');
-            created.push({ id: asset.id, url, role: 'gallery' });
+        if (!files || files.length === 0) {
+            throw new common_1.BadRequestException('No files uploaded');
         }
-        return created;
+        const userId = req.user?.sub;
+        const uploadedAssets = [];
+        for (const file of files) {
+            this.assetService.validateImageFile(file);
+            const asset = await this.assetService.createAsset(file, `exhibitors/${id}`, userId, { exhibitorId: id });
+            const link = await this.assetService.linkAssetToExhibitor(asset.id, id, 'gallery');
+            uploadedAssets.push({
+                id: asset.id,
+                url: asset.url,
+                role: link.role,
+                originalName: file.originalname,
+            });
+        }
+        return {
+            message: `${uploadedAssets.length} assets uploaded successfully`,
+            assets: uploadedAssets,
+        };
     }
 };
 exports.ExhibitorsAdminController = ExhibitorsAdminController;
@@ -91,7 +103,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Upload exhibitor assets' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
     (0, common_1.Post)(':id/assets'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10)),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.UploadedFiles)()),
     __param(2, (0, common_1.Req)()),
@@ -103,5 +115,6 @@ exports.ExhibitorsAdminController = ExhibitorsAdminController = __decorate([
     (0, swagger_1.ApiTags)('Exhibitors'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('api/v1/exhibitors'),
-    __metadata("design:paramtypes", [exhibitors_service_1.ExhibitorsService])
+    __metadata("design:paramtypes", [exhibitors_service_1.ExhibitorsService,
+        asset_service_1.AssetService])
 ], ExhibitorsAdminController);

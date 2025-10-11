@@ -17,6 +17,25 @@ services:
       timeout: 3s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: vevent-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"      # API
+      - "9001:9001"      # Web Console
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
   backend:
     build: .
     container_name: vevent-backend
@@ -27,12 +46,21 @@ services:
       DATABASE_URL: postgresql://vevent:veventpass@postgres:5432/veventdb?schema=public
       JWT_SECRET: your-secret-key-change-in-production
       JWT_REFRESH_SECRET: your-refresh-secret-change-in-production
+      # MinIO Configuration
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: vevent-assets
+      MINIO_USE_SSL: false
     ports:
       - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     command: sh -c "npx prisma db push && node dist/main.js"
 
 volumes:
   postgres-data:
+  minio-data:

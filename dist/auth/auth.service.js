@@ -75,9 +75,11 @@ let AuthService = class AuthService {
         return { user: await this.prisma.user.findUnique({ where: { id: user.id } }), accessToken };
     }
     async refresh(raw, res) {
+        if (!raw)
+            throw new common_1.UnauthorizedException('No refresh token provided');
         const token = await this.refreshTokenService.findByRaw(raw);
         if (!token || token.revoked || token.expiresAt < new Date())
-            throw new common_1.UnauthorizedException('Invalid refresh');
+            throw new common_1.UnauthorizedException('Invalid refresh token');
         await this.refreshTokenService.revoke(token.id);
         const { raw: newRaw } = await this.refreshTokenService.create(token.userId, this.getRefreshExpiresSeconds());
         const accessToken = await this.createAccessToken(token.userId);
@@ -85,11 +87,13 @@ let AuthService = class AuthService {
         return { accessToken };
     }
     async logout(raw, res) {
-        const token = await this.refreshTokenService.findByRaw(raw);
-        if (token)
-            await this.refreshTokenService.revoke(token.id);
+        if (raw) {
+            const token = await this.refreshTokenService.findByRaw(raw);
+            if (token)
+                await this.refreshTokenService.revoke(token.id);
+        }
         res.clearCookie('refreshToken', { path: '/' });
-        return { ok: true };
+        return { message: 'Logged out successfully' };
     }
     async createAccessToken(userId) {
         const payload = { sub: userId };
@@ -98,9 +102,9 @@ let AuthService = class AuthService {
     cookieOptions(maxAgeSeconds) {
         return {
             httpOnly: true,
-            secure: process.env.COOKIE_SECURE === 'true',
-            sameSite: 'lax',
-            domain: process.env.COOKIE_DOMAIN || 'localhost',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            domain: process.env.COOKIE_DOMAIN || undefined,
             path: '/',
             maxAge: maxAgeSeconds * 1000,
         };

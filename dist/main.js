@@ -1,33 +1,21 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppModule = void 0;
-const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
-const auth_module_1 = require("./auth/auth.module");
-const users_module_1 = require("./users/users.module");
-const exhibitors_module_1 = require("./exhibitors/exhibitors.module");
-const events_module_1 = require("./events/events.module");
-let AppModule = class AppModule {
-};
-exports.AppModule = AppModule;
-exports.AppModule = AppModule = __decorate([
-    (0, common_1.Module)({
-        imports: [auth_module_1.AuthModule, users_module_1.UsersModule, exhibitors_module_1.ExhibitorsModule, events_module_1.EventsModule],
-        controllers: [],
-        providers: [],
-    })
-], AppModule);
+const app_module_1 = require("./app.module");
 async function bootstrap() {
-    const app = await core_1.NestFactory.create(AppModule);
-    app.enableCors();
+    const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.enableCors({
+        origin: [
+            'http://0.0.0.0:3000',
+            'http://localhost:3000',
+            'http://185.149.192.60:3000'
+        ],
+        credentials: true,
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+        allowedHeaders: 'Content-Type, Accept, Authorization',
+    });
     app.use(cookieParser());
     const config = new swagger_1.DocumentBuilder()
         .setTitle('vevent API')
@@ -37,11 +25,10 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api/docs', app, document, {
-        swaggerOptions: {
-            persistAuthorization: true,
-        },
+        swaggerOptions: { persistAuthorization: true },
     });
-    await app.listen(3000);
-    console.log('Application is running on: http://localhost:3000');
+    const port = process.env.PORT || 3001;
+    await app.listen(port);
+    console.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();

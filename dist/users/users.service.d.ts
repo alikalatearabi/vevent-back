@@ -54,4 +54,53 @@ export declare class UsersService {
         avatarAssetId: string | null;
         isActive: boolean;
     }>>;
+    listFavorites(userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        userId: string;
+        resourceType: import(".prisma/client").$Enums.ResourceType;
+        resourceId: string;
+    }[]>;
+    addFavorite(userId: string, dto: {
+        resourceType: any;
+        resourceId: string;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        userId: string;
+        resourceType: import(".prisma/client").$Enums.ResourceType;
+        resourceId: string;
+    }>;
+    removeFavorite(userId: string, id: string): Promise<{
+        ok: boolean;
+    }>;
+    addRecent(userId: string, dto: {
+        resourceType: any;
+        resourceId: string;
+        metadata?: any;
+    }): Promise<any>;
+    getUserEvents(userId: string): Promise<{
+        data: {
+            userRole: string;
+            registrationDate: Date;
+            id: string;
+            name: string;
+            description: string;
+            createdAt: Date;
+            title: string;
+            location: string;
+            color: string;
+            start: Date;
+            end: Date;
+            timed: boolean;
+            timezone: string;
+            published: boolean;
+        }[];
+        meta: {
+            total: number;
+            created: number;
+            registered: number;
+        };
+    }>;
+    private checkResourceExists;
 }

@@ -44,13 +44,13 @@ export declare class AuthService {
         accessToken: string;
     }>;
     logout(raw: string, res: any): Promise<{
-        ok: boolean;
+        message: string;
     }>;
     createAccessToken(userId: string): Promise<string>;
     cookieOptions(maxAgeSeconds: number): {
         httpOnly: boolean;
         secure: boolean;
-        sameSite: string;
+        sameSite: "none" | "lax";
         domain: string;
         path: string;
         maxAge: number;
