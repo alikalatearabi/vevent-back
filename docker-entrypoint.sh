@@ -66,25 +66,29 @@ wait_for_postgres
 # Run Prisma migrations
 echo "Running Prisma migrations..."
 
-# First generate the Prisma client
-echo "Generating Prisma client..."
-npx prisma generate
+# Ensure prisma directory has correct permissions
+mkdir -p /app/node_modules/.prisma
+chmod -R 777 /app/node_modules/.prisma || true
+chmod -R 777 /app/node_modules/@prisma || true
+
+# Skip regenerating Prisma client in the entrypoint - it's already generated in the Dockerfile
+echo "Skipping Prisma client generation (already done in Dockerfile)"
 
 # Check if there are existing migrations
 if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations)" ]; then
   echo "Running existing migrations..."
-  npx prisma migrate deploy
+  npx prisma migrate deploy --schema=prisma/schema.prisma
 else
   echo "No existing migrations found, creating initial migration..."
-  # Create the initial migration and apply it
-  npx prisma migrate dev --name initial-migration --create-only
-  npx prisma migrate deploy
+  # Skip dev and go straight to deploy for production
+  echo "Creating migrations from schema..."
+  npx prisma db push --schema=prisma/schema.prisma --skip-generate
 fi
 
-# Push the schema if migrations fail
+# If migrations fail, try direct push
 if [ $? -ne 0 ]; then
   echo "Migration failed, attempting direct schema push..."
-  npx prisma db push --accept-data-loss
+  npx prisma db push --schema=prisma/schema.prisma --skip-generate --accept-data-loss
 fi
 
 # Run the main container command

@@ -19,6 +19,9 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci --ignore-scripts
 RUN npx prisma generate
+RUN mkdir -p /app/node_modules/.prisma && \
+    chmod 777 -R /app/node_modules/.prisma && \
+    chmod 777 -R /app/node_modules/@prisma
 COPY . .
 EXPOSE 3001
 CMD ["npm", "run", "start:dev"]
@@ -50,15 +53,17 @@ RUN chmod +x /app/docker-entrypoint.sh
 # Install PostgreSQL client for health check in entrypoint script
 RUN apk add --no-cache postgresql-client postgresql
 
-# Generate Prisma Client
-RUN npx prisma generate
-
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
 
-# Make sure the nestjs user can execute the entrypoint script
-RUN chown nestjs:nodejs /app/docker-entrypoint.sh
+# Generate Prisma Client and set proper permissions
+RUN npx prisma generate && \
+    mkdir -p /app/node_modules/.prisma && \
+    chown -R nestjs:nodejs /app/node_modules/.prisma && \
+    chown -R nestjs:nodejs /app/node_modules/@prisma && \
+    chown nestjs:nodejs /app/docker-entrypoint.sh && \
+    chmod 777 -R /app/node_modules/.prisma
 
 USER nestjs
 
