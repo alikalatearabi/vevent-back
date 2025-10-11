@@ -2,15 +2,22 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
-import * as cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(cors({
-    origin: ['http://0.0.0.0:3000', 'http://localhost:3000', 'http://185.149.192.60:3000'],
+  // ✅ Use Nest's built-in enableCors, not app.use(cors())
+  app.enableCors({
+    origin: [
+      'http://0.0.0.0:3000',
+      'http://localhost:3000',
+      'http://185.149.192.60:3000'
+    ],
     credentials: true,
-  }));
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
+
   app.use(cookieParser());
 
   const config = new DocumentBuilder()
@@ -23,12 +30,9 @@ async function bootstrap() {
     )
     .build();
 
-  // Let Swagger scan the whole application so all controllers are included
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
+    swaggerOptions: { persistAuthorization: true },
   });
 
   const port = process.env.PORT || 3001;
