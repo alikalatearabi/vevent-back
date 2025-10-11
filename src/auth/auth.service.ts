@@ -1,8 +1,9 @@
-import { Inject, Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { RefreshTokenService } from './refresh-token.service';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -29,16 +30,45 @@ export class AuthService {
     return parseInt(s);
   }
 
-  async register(dto: any, res: any) {
+  async register(dto: RegisterDto, res: any) {
+    // Validate terms of conditions acceptance
+    if (!dto.toc) {
+      throw new BadRequestException('You must accept the terms and conditions to register');
+    }
+
+    // Check if email already exists
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (existing) throw new BadRequestException('Email already in use');
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
+    // Hash password
     const passwordHash = await argon2.hash(dto.password);
+
+    // Create user with all fields
     const user = await this.prisma.user.create({
       data: {
-        firstname: dto.firstname,
-        lastname: dto.lastname,
+        firstname: dto.firstName,
+        lastname: dto.lastName,
         email: dto.email,
         passwordHash,
+        phone: dto.phone,
+        company: dto.company || null,
+        jobTitle: dto.jobTitle || null,
+        role: 'USER',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        firstname: true,
+        lastname: true,
+        email: true,
+        role: true,
+        avatarAssetId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
       },
     });
 
@@ -47,7 +77,10 @@ export class AuthService {
 
     res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
 
-    return { user: await this.prisma.user.findUnique({ where: { id: user.id } }), accessToken };
+    return { 
+      user,
+      accessToken 
+    };
   }
 
   async login(dto: any, res: any) {

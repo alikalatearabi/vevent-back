@@ -1,16 +1,31 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsBoolean, IsOptional, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
-  firstname: string;
+  firstName: string;
 
   @IsString()
-  lastname: string;
+  lastName: string;
 
   @IsEmail()
   email: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   password: string;
+
+  @IsString()
+  @Matches(/^09\d{9}$/, { message: 'Phone must be in Iranian mobile format (09XXXXXXXXX)' })
+  phone: string;
+
+  @IsOptional()
+  @IsString()
+  company?: string;
+
+  @IsOptional()
+  @IsString()
+  jobTitle?: string;
+
+  @IsBoolean()
+  toc: boolean;
 }

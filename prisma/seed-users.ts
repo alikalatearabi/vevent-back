@@ -29,10 +29,11 @@ async function seedAdminUser() {
   const adminUser = await prisma.user.create({
     data: {
       email: adminEmail,
-      password: hashedPassword,
-      name: adminName,
-      role: 'ADMIN', // Assuming you have a role field, if not this will be ignored
-      emailVerified: true, // If you have this field
+      passwordHash: hashedPassword,
+      firstname: adminName.split(' ')[0] || 'Admin',
+      lastname: adminName.split(' ').slice(1).join(' ') || 'User',
+      phone: '09123456789', // Default admin phone
+      role: 'ADMIN',
     }
   });
 
@@ -77,8 +78,10 @@ async function seedTestUsers() {
       await prisma.user.create({
         data: {
           email: user.email,
-          password: hashedPassword,
-          name: user.name,
+          passwordHash: hashedPassword,
+          firstname: user.name.split(' ')[0] || user.email.split('@')[0],
+          lastname: user.name.split(' ').slice(1).join(' ') || 'User',
+          phone: '09123456789', // Default phone for seed users
         }
       });
       createdCount++;
