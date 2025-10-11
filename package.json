@@ -10,6 +10,9 @@
     "prisma:generate": "prisma generate",
     "prisma:dbpush": "prisma db push",
     "prisma:migrate": "prisma migrate dev --name init",
+    "seed": "tsx prisma/seed.ts",
+    "seed:users": "tsx prisma/seed-users.ts",
+    "seed:categories": "tsx prisma/update-persian-categories.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
