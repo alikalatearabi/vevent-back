@@ -17,6 +17,8 @@ async function bootstrap() {
         'http://localhost:3000',      // Nuxt dev server
         'http://localhost:3001',      // Backend (for testing)
         'http://127.0.0.1:3000',      // Alternative localhost
+        'http://0.0.0.0:3000',        // Nuxt 0.0.0.0 binding
+        'http://10.43.123.8:3000',    // Local network IP
         'http://185.149.192.60:3000', // Production frontend
         'http://185.149.192.60',      // Production frontend (without port)
         process.env.FRONTEND_URL,     // Environment variable
