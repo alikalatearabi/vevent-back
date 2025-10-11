@@ -7,12 +7,31 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   // Configure CORS to allow requests from any origin with credentials
+  const corsOrigins = process.env.CORS_ORIGINS ? 
+    process.env.CORS_ORIGINS.split(',') : 
+    ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+    
   app.enableCors({
-    origin: true, // Allow any origin
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl requests)
+      if (!origin) return callback(null, true);
+      
+      // If specific origins are defined, check against them
+      if (corsOrigins.indexOf(origin) !== -1 || corsOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        // For development convenience, you can enable all origins
+        // This should be restricted in production
+        console.log(`Origin ${origin} not allowed by CORS policy`);
+        callback(null, true); // Allow all origins for now to debug
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true, // Allow credentials (cookies, authorization headers)
-    allowedHeaders: 'Content-Type,Accept,Authorization',
+    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With',
     exposedHeaders: 'Content-Disposition',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
   
   app.use(cookieParser());

@@ -95,12 +95,12 @@ export class AuthService {
     
     return {
       httpOnly: true,
-      // In production, cookies should always be secure (HTTPS only)
-      // In development, we allow non-secure cookies for localhost testing
+      // In production or if explicitly set, cookies should be secure (HTTPS only)
+      // For local development, we allow non-secure cookies for localhost testing
       secure: isProduction ? true : (process.env.COOKIE_SECURE === 'true'),
-      // SameSite=None is required for cross-origin cookies
-      // But it requires secure=true, so we use 'lax' for non-secure environments
-      sameSite: isProduction ? 'none' : 'lax',
+      // For cross-origin requests, SameSite must be 'none' which requires secure=true
+      // In local development, we'll use a more permissive setting
+      sameSite: process.env.COOKIE_SAME_SITE || (isProduction ? 'none' : 'lax'),
       // Only set domain if specified in env, otherwise browser will use current domain
       ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
       path: '/',
