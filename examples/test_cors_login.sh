@@ -4,7 +4,7 @@
 # both the preflight OPTIONS request and the actual POST login request
 
 # API base URL 
-API_BASE="http://185.149.192.60:3001/api"
+API_BASE="http://185.149.192.60:3001/api/v1"
 
 # User credentials
 EMAIL="john.doe@example.com"

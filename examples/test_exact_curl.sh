@@ -2,7 +2,7 @@
 
 # Test with exact curl command that's failing
 echo "Testing with exact same curl command that's failing..."
-curl 'http://185.149.192.60:3001/api/auth/login' \
+curl 'http://185.149.192.60:3001/api/v1/auth/login' \
   -v \
   -H 'Referer: http://0.0.0.0:3000/' \
   -H 'Origin: http://0.0.0.0:3000' \

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# API base URL - NOTE: We're removing the /v1 from the path to match actual endpoint
-API_BASE="http://185.149.192.60:3001/api"
+# API base URL - NOTE: The path MUST include /v1/ to match the actual endpoint
+API_BASE="http://185.149.192.60:3001/api/v1"
 
 # User credentials
 EMAIL="john.doe@example.com"
