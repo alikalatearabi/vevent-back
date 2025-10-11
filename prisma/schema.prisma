@@ -106,19 +106,32 @@ model Exhibitor {
 }
 
 model Product {
-  id          String           @id @default(uuid())
-  exhibitorId String
-  name        String
-  description String?
-  price       Decimal?         @db.Decimal(12, 2)
-  metadata    Json?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?
-  exhibitor   Exhibitor        @relation(fields: [exhibitorId], references: [id], onDelete: Cascade)
-  assets      AssetOnProduct[]
+  id               String           @id @default(uuid())
+  exhibitorId      String
+  categoryId       String?
+  name             String
+  title            String?          // Display title
+  description      String?
+  shortDescription String?          // Brief description for cards
+  price            Decimal?         @db.Decimal(12, 2)
+  imageUrl         String?          // Primary image URL (for backward compatibility)
+  inStock          Boolean          @default(true)
+  featured         Boolean          @default(false)
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+  
+  // Relations
+  exhibitor        Exhibitor        @relation(fields: [exhibitorId], references: [id], onDelete: Cascade)
+  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  assets           AssetOnProduct[]
+  tags             TagOnProduct[]
 
   @@index([name])
+  @@index([categoryId])
+  @@index([featured])
+  @@index([inStock])
 }
 
 model Attendee {
@@ -211,10 +224,30 @@ model Tag {
   id         String           @id @default(uuid())
   name       String           @unique
   title      String?
+  color      String?          // For frontend display
   meta       Json?
   createdAt  DateTime         @default(now())
   events     TagOnEvent[]
   exhibitors TagOnExhibitor[]
+  products   TagOnProduct[]   // Add this relation
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  title       String?
+  description String?
+  color       String?   // For frontend display
+  icon        String?   // Icon name/class
+  parentId    String?   // For nested categories
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name])
+  @@index([parentId])
 }
 
 model TagOnEvent {
@@ -235,6 +268,16 @@ model TagOnExhibitor {
   exhibitor   Exhibitor @relation(fields: [exhibitorId], references: [id], onDelete: Cascade)
 
   @@unique([tagId, exhibitorId])
+}
+
+model TagOnProduct {
+  id        String  @id @default(uuid())
+  tagId     String
+  productId String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, productId])
 }
 
 model RefreshToken {

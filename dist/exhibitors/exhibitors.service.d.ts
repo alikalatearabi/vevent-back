@@ -22,72 +22,79 @@ export declare class ExhibitorsService {
         };
     }>;
     findById(id: string): Promise<{
-        assets: ({
-            asset: {
-                id: string;
+        tags: ({
+            tag: {
                 createdAt: Date;
-                deletedAt: Date | null;
-                createdBy: string | null;
-                url: string;
-                type: string | null;
+                title: string | null;
+                name: string;
+                id: string;
+                color: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
             };
         } & {
-            id: string;
             exhibitorId: string;
-            assetId: string;
+            id: string;
+            tagId: string;
+        })[];
+        assets: ({
+            asset: {
+                createdAt: Date;
+                id: string;
+                deletedAt: Date | null;
+                createdBy: string | null;
+                meta: import("@prisma/client/runtime/library").JsonValue | null;
+                url: string;
+                type: string | null;
+            };
+        } & {
+            exhibitorId: string;
+            id: string;
             role: string | null;
+            assetId: string;
         })[];
         products: ({
             assets: ({
                 asset: {
-                    id: string;
                     createdAt: Date;
+                    id: string;
                     deletedAt: Date | null;
                     createdBy: string | null;
+                    meta: import("@prisma/client/runtime/library").JsonValue | null;
                     url: string;
                     type: string | null;
-                    meta: import("@prisma/client/runtime/library").JsonValue | null;
                 };
             } & {
                 id: string;
+                role: string | null;
                 assetId: string;
                 productId: string;
-                role: string | null;
             })[];
         } & {
-            id: string;
             exhibitorId: string;
-            name: string;
-            description: string | null;
-            price: import("@prisma/client/runtime/library").Decimal | null;
-            metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            categoryId: string | null;
+            inStock: boolean;
+            featured: boolean;
             createdAt: Date;
+            shortDescription: string | null;
+            description: string | null;
+            title: string | null;
+            name: string;
+            price: import("@prisma/client/runtime/library").Decimal | null;
+            id: string;
+            imageUrl: string | null;
+            metadata: import("@prisma/client/runtime/library").JsonValue | null;
             updatedAt: Date;
             deletedAt: Date | null;
-        })[];
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                title: string | null;
-                meta: import("@prisma/client/runtime/library").JsonValue | null;
-            };
-        } & {
-            id: string;
-            exhibitorId: string;
-            tagId: string;
         })[];
         events: {
-            id: string;
             exhibitorId: string | null;
-            name: string;
-            description: string | null;
             createdAt: Date;
+            description: string | null;
+            title: string;
+            name: string;
+            id: string;
             updatedAt: Date;
             deletedAt: Date | null;
-            title: string;
             location: string | null;
             createdById: string | null;
             color: string | null;
@@ -98,13 +105,13 @@ export declare class ExhibitorsService {
             published: boolean;
         }[];
     } & {
-        id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string | null;
+        name: string;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
-        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -112,13 +119,13 @@ export declare class ExhibitorsService {
         createdById: string | null;
     }>;
     create(data: any, userId?: string): Promise<{
-        id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string | null;
+        name: string;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
-        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -126,13 +133,13 @@ export declare class ExhibitorsService {
         createdById: string | null;
     }>;
     update(id: string, data: any): Promise<{
-        id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string | null;
+        name: string;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
-        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -140,13 +147,13 @@ export declare class ExhibitorsService {
         createdById: string | null;
     }>;
     softDelete(id: string): Promise<{
-        id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string | null;
+        name: string;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
-        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -155,18 +162,18 @@ export declare class ExhibitorsService {
     }>;
     linkAsset(exhibitorId: string, assetId: string, role?: string): Promise<{
         asset: {
-            id: string;
             createdAt: Date;
+            id: string;
             deletedAt: Date | null;
             createdBy: string | null;
+            meta: import("@prisma/client/runtime/library").JsonValue | null;
             url: string;
             type: string | null;
-            meta: import("@prisma/client/runtime/library").JsonValue | null;
         };
     } & {
-        id: string;
         exhibitorId: string;
-        assetId: string;
+        id: string;
         role: string | null;
+        assetId: string;
     }>;
 }

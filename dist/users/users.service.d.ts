@@ -3,8 +3,8 @@ export declare class UsersService {
     private readonly prisma;
     constructor(prisma: PrismaClient);
     findById(id: string): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
         role: import(".prisma/client").$Enums.Role;
@@ -16,8 +16,8 @@ export declare class UsersService {
         isActive: boolean;
     }>;
     findByEmail(email: string): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
         role: import(".prisma/client").$Enums.Role;
@@ -29,8 +29,8 @@ export declare class UsersService {
         isActive: boolean;
     }>;
     createUser(data: Prisma.UserCreateInput): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
         role: import(".prisma/client").$Enums.Role;
@@ -42,8 +42,8 @@ export declare class UsersService {
         isActive: boolean;
     }>;
     sanitize(user: User): Promise<Partial<{
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
         role: import(".prisma/client").$Enums.Role;
@@ -55,8 +55,8 @@ export declare class UsersService {
         isActive: boolean;
     }>>;
     listFavorites(userId: string): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
@@ -65,8 +65,8 @@ export declare class UsersService {
         resourceType: any;
         resourceId: string;
     }): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
@@ -83,11 +83,11 @@ export declare class UsersService {
         data: {
             userRole: string;
             registrationDate: Date;
-            id: string;
-            name: string;
-            description: string;
             createdAt: Date;
+            description: string;
             title: string;
+            name: string;
+            id: string;
             location: string;
             color: string;
             start: Date;

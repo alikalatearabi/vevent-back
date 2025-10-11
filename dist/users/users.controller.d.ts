@@ -5,8 +5,8 @@ export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     me(req: any): Promise<Partial<{
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
         role: import(".prisma/client").$Enums.Role;
@@ -18,15 +18,15 @@ export declare class UsersController {
         isActive: boolean;
     }>>;
     listFavorites(req: any): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }[]>;
     addFavorite(req: any, dto: CreateFavoriteDto): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
@@ -39,11 +39,11 @@ export declare class UsersController {
         data: {
             userRole: string;
             registrationDate: Date;
-            id: string;
-            name: string;
-            description: string;
             createdAt: Date;
+            description: string;
             title: string;
+            name: string;
+            id: string;
             location: string;
             color: string;
             start: Date;

@@ -10,8 +10,8 @@ export declare class AuthService {
     private getRefreshExpiresSeconds;
     register(dto: any, res: any): Promise<{
         user: {
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             deletedAt: Date | null;
             role: import(".prisma/client").$Enums.Role;
@@ -26,8 +26,8 @@ export declare class AuthService {
     }>;
     login(dto: any, res: any): Promise<{
         user: {
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             deletedAt: Date | null;
             role: import(".prisma/client").$Enums.Role;
@@ -56,8 +56,8 @@ export declare class AuthService {
         maxAge: number;
     };
     validateUserFromJwt(payload: any): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         deletedAt: Date | null;
         role: import(".prisma/client").$Enums.Role;
