@@ -53,7 +53,7 @@ services:
     networks:
       - vevent-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,7 +71,7 @@ services:
       PORT: ${PORT:-3001}
       DATABASE_URL: postgresql://${POSTGRES_USER:-vevent}:${POSTGRES_PASSWORD:-veventpass}@postgres:5432/${POSTGRES_DB:-veventdb}?schema=public
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redispass}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-refresh-secret-key-change-this-in-production}

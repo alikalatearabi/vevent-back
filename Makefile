@@ -69,7 +69,7 @@ backend-shell: ## Access backend container shell
 	docker-compose exec backend sh
 
 redis-cli: ## Access Redis CLI
-	docker-compose exec redis redis-cli -a redispass
+	docker-compose exec redis redis-cli -a $${REDIS_PASSWORD:-redispass}
 
 health: ## Check backend health
 	@curl -s http://localhost:3001/health || echo "Backend is not responding"
