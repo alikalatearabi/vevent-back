@@ -21,8 +21,13 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Debug: Check what was built
+RUN ls -la
+RUN ls -la dist/
+RUN find dist/ -name "*.js" -type f
+
 # Verify build output exists
-RUN ls -la dist/ && ls -la dist/main.js
+RUN ls -la dist/main.js || (echo "main.js not found, listing all JS files:" && find . -name "*.js" -type f)
 
 # Production stage
 FROM node:20-alpine
