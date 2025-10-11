@@ -10,10 +10,13 @@
     "prisma:generate": "prisma generate",
     "prisma:dbpush": "prisma db push",
     "prisma:migrate": "prisma migrate dev --name init",
-    "seed": "tsx prisma/seed.ts",
-    "seed:users": "tsx prisma/seed-users.ts",
-    "seed:categories": "tsx prisma/update-persian-categories.ts",
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "seed:users": "ts-node -r tsconfig-paths/register prisma/seed-users.ts",
+    "seed:categories": "ts-node -r tsconfig-paths/register prisma/update-persian-categories.ts",
     "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -47,6 +50,7 @@
     "prisma": "^5.10.0",
     "ts-node": "^10.0.0",
     "ts-node-dev": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.0.0"
   }
 }
