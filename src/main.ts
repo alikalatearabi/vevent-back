@@ -16,15 +16,22 @@ async function bootstrap() {
       // Allow requests with no origin (like mobile apps, curl requests)
       if (!origin) return callback(null, true);
       
-      // If specific origins are defined, check against them
-      if (corsOrigins.indexOf(origin) !== -1 || corsOrigins.includes('*')) {
-        callback(null, true);
+      // When using credentials, we MUST return the specific origin, not a wildcard
+      // This is a browser security requirement for credentials mode
+      console.log(`Origin requesting access: ${origin}`);
+      
+      // If the origin is in our allowed list, return that exact origin
+      if (corsOrigins.indexOf(origin) !== -1) {
+        callback(null, origin);
+      } else if (corsOrigins.includes('*')) {
+        // If we have a wildcard in our list, but we're getting a specific origin,
+        // return that specific origin (not the wildcard)
+        callback(null, origin);
       } else {
-        // For development convenience, you can enable all origins
-        // This should be restricted in production
-        console.log(`Origin ${origin} not allowed by CORS policy - adding it to allowed list`);
-        corsOrigins.push(origin); // Dynamically add to allowed origins for this session
-        callback(null, true); // Allow all origins for now to debug
+        // For development convenience, we'll add new origins dynamically
+        console.log(`Adding new origin to allowed list: ${origin}`);
+        corsOrigins.push(origin);
+        callback(null, origin);
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
