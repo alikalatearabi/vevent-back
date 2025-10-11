@@ -48,7 +48,7 @@ COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Install PostgreSQL client for health check in entrypoint script
-RUN apk add --no-cache postgresql-client
+RUN apk add --no-cache postgresql-client postgresql
 
 # Generate Prisma Client
 RUN npx prisma generate
