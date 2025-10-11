@@ -9,7 +9,7 @@ async function bootstrap() {
   // Configure CORS to allow requests from any origin with credentials
   const corsOrigins = process.env.CORS_ORIGINS ? 
     process.env.CORS_ORIGINS.split(',') : 
-    ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+    ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://0.0.0.0:3000'];
     
   app.enableCors({
     origin: function (origin, callback) {
@@ -22,13 +22,14 @@ async function bootstrap() {
       } else {
         // For development convenience, you can enable all origins
         // This should be restricted in production
-        console.log(`Origin ${origin} not allowed by CORS policy`);
+        console.log(`Origin ${origin} not allowed by CORS policy - adding it to allowed list`);
+        corsOrigins.push(origin); // Dynamically add to allowed origins for this session
         callback(null, true); // Allow all origins for now to debug
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true, // Allow credentials (cookies, authorization headers)
-    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With',
+    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With,Referer,User-Agent',
     exposedHeaders: 'Content-Disposition',
     preflightContinue: false,
     optionsSuccessStatus: 204,
