@@ -21,6 +21,9 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Verify build output exists
+RUN ls -la dist/ && ls -la dist/main.js
+
 # Production stage
 FROM node:20-alpine
 
@@ -41,6 +44,9 @@ RUN npx prisma generate
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+
+# Verify copied files exist
+RUN ls -la dist/ && ls -la dist/main.js
 
 # Expose port
 EXPOSE 3001
