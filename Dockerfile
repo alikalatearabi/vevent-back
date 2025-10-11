@@ -43,12 +43,23 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Install PostgreSQL client for health check in entrypoint script
+RUN apk add --no-cache postgresql-client
+
 # Generate Prisma Client
 RUN npx prisma generate
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
+
+# Make sure the nestjs user can execute the entrypoint script
+RUN chown nestjs:nodejs /app/docker-entrypoint.sh
+
 USER nestjs
 
 EXPOSE 3001
@@ -57,5 +68,6 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
 
