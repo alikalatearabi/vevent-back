@@ -23,7 +23,7 @@ export class AttendeesController {
     return this.attendeesService.checkinAttendee(id);
   }
 
-  // New attendee endpoints
+  // New attendee endpoints  
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get all attendees for an event' })
   @Get('events/:eventId/attendees')

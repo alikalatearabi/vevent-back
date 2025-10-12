@@ -29,7 +29,11 @@ export class AttendeesService {
     const attendees = await this.prisma.attendee.findMany({
       where: whereClause,
       include: {
-        user: true
+        user: {
+          select: {
+            email: true
+          }
+        }
       },
       orderBy: [
         { role: 'asc' },
@@ -38,14 +42,8 @@ export class AttendeesService {
       ]
     });
 
-    // Get counts
-    const total = await this.prisma.attendee.count({ where: { eventId } });
-    const speakers = await this.prisma.attendee.count({ 
-      where: { eventId, role: 'SPEAKER' } 
-    });
-    const visitors = await this.prisma.attendee.count({ 
-      where: { eventId, role: 'VISITOR' } 
-    });
+    // Get count for this specific query
+    const total = await this.prisma.attendee.count({ where: whereClause });
 
     const formattedAttendees = attendees.map(attendee => ({
       id: attendee.id,
@@ -53,19 +51,28 @@ export class AttendeesService {
       lastName: attendee.lastName,
       company: attendee.showCompany ? attendee.company : null,
       jobTitle: attendee.jobTitle,
-      email: attendee.showEmail ? attendee.email : null,
+      email: attendee.showEmail ? (attendee.email || attendee.user?.email) : null,
       phone: attendee.showPhone ? attendee.phone : null,
       avatar: attendee.avatar,
-      role: attendee.role.toLowerCase()
+      role: attendee.role,
+      checkedIn: attendee.checkedIn,
+      privacy: {
+        showPhone: attendee.showPhone,
+        showCompany: attendee.showCompany,
+        showEmail: attendee.showEmail
+      },
+      user: attendee.user ? {
+        email: attendee.user.email
+      } : null
     }));
 
     return {
-      attendees: formattedAttendees,
-      total,
-      speakers,
-      visitors: visitors + await this.prisma.attendee.count({ 
-        where: { eventId, role: { in: ['VISITOR', 'GUEST'] } } 
-      }) - visitors // Include guests in visitors count
+      data: formattedAttendees,
+      meta: {
+        page: 1,
+        limit: 50,
+        total: total
+      }
     };
   }
 }
