@@ -4,6 +4,7 @@ import { FindEventsDto } from './dto/find-events.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { RegisterAttendeeDto } from './dto/register-attendee.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Events')
@@ -35,6 +36,7 @@ export class EventsController {
   }
 
   // Public registration endpoint — auth optional
+  @UseGuards(OptionalJwtAuthGuard)
   @Post(':id/register')
   @ApiOperation({ summary: 'Register attendee (auth optional)' })
   @ApiResponse({ status: 200, description: 'Attendee created or existing' })

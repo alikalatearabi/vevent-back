@@ -1120,19 +1120,23 @@ For issues or questions, check the server logs or contact the development team.
 
 ---
 
-*Last Updated: October 12, 2025*
+## 📞 Support & Production Info
 
+### Production Server
+- **API Server:** `http://185.149.192.60:3001` 🚀
+- **Health Check:** `http://185.149.192.60:3001/health`
 
-## 📞 Support
-
+### Local Development
 - **API Server:** `http://localhost:3001`
 - **Health Check:** `http://localhost:3001/health`
 - **Swagger Documentation:** `http://localhost:3001/api` (if enabled)
 
-For issues or questions, check the server logs or contact the development team.
+### Quick Test (Production)
+```bash
+# Test with real event ID that has attendee data
+curl -X GET "http://185.149.192.60:3001/api/v1/events/6c5df3b9-428e-4293-a859-4c18cec49149/attendees" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
 
 ---
-
-*Last Updated: October 12, 2025*
-
-5022 2910 6457 5374 حسین دانش یار

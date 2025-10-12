@@ -19,6 +19,7 @@ const find_events_dto_1 = require("./dto/find-events.dto");
 const create_event_dto_1 = require("./dto/create-event.dto");
 const register_attendee_dto_1 = require("./dto/register-attendee.dto");
 const passport_1 = require("@nestjs/passport");
+const optional_jwt_auth_guard_1 = require("../common/guards/optional-jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
 let EventsController = class EventsController {
     constructor(eventsService) {
@@ -93,6 +94,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EventsController.prototype, "create", null);
 __decorate([
+    (0, common_1.UseGuards)(optional_jwt_auth_guard_1.OptionalJwtAuthGuard),
     (0, common_1.Post)(':id/register'),
     (0, swagger_1.ApiOperation)({ summary: 'Register attendee (auth optional)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Attendee created or existing' }),

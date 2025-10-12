@@ -9,7 +9,7 @@ export declare class AttendeesController {
         ok: boolean;
     }>;
     getEventAttendees(eventId: string): Promise<{
-        attendees: {
+        data: {
             id: string;
             firstName: string;
             lastName: string;
@@ -18,14 +18,25 @@ export declare class AttendeesController {
             email: string;
             phone: string;
             avatar: string;
-            role: string;
+            role: import(".prisma/client").$Enums.AttendeeRole;
+            checkedIn: boolean;
+            privacy: {
+                showPhone: boolean;
+                showCompany: boolean;
+                showEmail: boolean;
+            };
+            user: {
+                email: string;
+            };
         }[];
-        total: number;
-        speakers: number;
-        visitors: number;
+        meta: {
+            page: number;
+            limit: number;
+            total: number;
+        };
     }>;
     getEventSpeakers(eventId: string): Promise<{
-        attendees: {
+        data: {
             id: string;
             firstName: string;
             lastName: string;
@@ -34,14 +45,25 @@ export declare class AttendeesController {
             email: string;
             phone: string;
             avatar: string;
-            role: string;
+            role: import(".prisma/client").$Enums.AttendeeRole;
+            checkedIn: boolean;
+            privacy: {
+                showPhone: boolean;
+                showCompany: boolean;
+                showEmail: boolean;
+            };
+            user: {
+                email: string;
+            };
         }[];
-        total: number;
-        speakers: number;
-        visitors: number;
+        meta: {
+            page: number;
+            limit: number;
+            total: number;
+        };
     }>;
     getEventVisitors(eventId: string): Promise<{
-        attendees: {
+        data: {
             id: string;
             firstName: string;
             lastName: string;
@@ -50,11 +72,22 @@ export declare class AttendeesController {
             email: string;
             phone: string;
             avatar: string;
-            role: string;
+            role: import(".prisma/client").$Enums.AttendeeRole;
+            checkedIn: boolean;
+            privacy: {
+                showPhone: boolean;
+                showCompany: boolean;
+                showEmail: boolean;
+            };
+            user: {
+                email: string;
+            };
         }[];
-        total: number;
-        speakers: number;
-        visitors: number;
+        meta: {
+            page: number;
+            limit: number;
+            total: number;
+        };
     }>;
     createConnectionRequest(dto: CreateConnectionRequestDto, req: any): Promise<{
         requestId: string;
