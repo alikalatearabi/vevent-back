@@ -1,6 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
 import { RefreshTokenService } from './refresh-token.service';
+import { RegisterDto } from './dto/register.dto';
 export declare class AuthService {
     private readonly jwtService;
     private readonly prisma;
@@ -8,35 +9,37 @@ export declare class AuthService {
     constructor(jwtService: JwtService, prisma: PrismaClient, refreshTokenService: RefreshTokenService);
     private getAccessExpiresSeconds;
     private getRefreshExpiresSeconds;
-    register(dto: any, res: any): Promise<{
+    register(dto: RegisterDto, res: any): Promise<{
         user: {
-            createdAt: Date;
             id: string;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            role: import(".prisma/client").$Enums.Role;
             email: string;
+            createdAt: Date;
+            role: import(".prisma/client").$Enums.Role;
             firstname: string;
             lastname: string;
-            passwordHash: string;
-            avatarAssetId: string | null;
+            avatarAssetId: string;
             isActive: boolean;
+            updatedAt: Date;
+            deletedAt: Date;
         };
         accessToken: string;
     }>;
     login(dto: any, res: any): Promise<{
         user: {
-            createdAt: Date;
             id: string;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            role: import(".prisma/client").$Enums.Role;
             email: string;
+            createdAt: Date;
+            company: string | null;
+            jobTitle: string | null;
+            phone: string;
+            role: import(".prisma/client").$Enums.Role;
             firstname: string;
             lastname: string;
             passwordHash: string;
             avatarAssetId: string | null;
             isActive: boolean;
+            updatedAt: Date;
+            deletedAt: Date | null;
         };
         accessToken: string;
     }>;
@@ -56,16 +59,19 @@ export declare class AuthService {
         maxAge: number;
     };
     validateUserFromJwt(payload: any): Promise<{
-        createdAt: Date;
         id: string;
-        updatedAt: Date;
-        deletedAt: Date | null;
-        role: import(".prisma/client").$Enums.Role;
         email: string;
+        createdAt: Date;
+        company: string | null;
+        jobTitle: string | null;
+        phone: string;
+        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
         avatarAssetId: string | null;
         isActive: boolean;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
 }

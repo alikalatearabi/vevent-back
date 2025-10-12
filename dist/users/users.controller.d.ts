@@ -5,29 +5,32 @@ export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     me(req: any): Promise<Partial<{
-        createdAt: Date;
         id: string;
-        updatedAt: Date;
-        deletedAt: Date | null;
-        role: import(".prisma/client").$Enums.Role;
         email: string;
+        createdAt: Date;
+        company: string | null;
+        jobTitle: string | null;
+        phone: string;
+        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
         avatarAssetId: string | null;
         isActive: boolean;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>>;
     listFavorites(req: any): Promise<{
-        createdAt: Date;
         id: string;
         userId: string;
+        createdAt: Date;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }[]>;
     addFavorite(req: any, dto: CreateFavoriteDto): Promise<{
-        createdAt: Date;
         id: string;
         userId: string;
+        createdAt: Date;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }>;
@@ -39,11 +42,11 @@ export declare class UsersController {
         data: {
             userRole: string;
             registrationDate: Date;
+            id: string;
             createdAt: Date;
+            name: string;
             description: string;
             title: string;
-            name: string;
-            id: string;
             location: string;
             color: string;
             start: Date;

@@ -24,77 +24,43 @@ export declare class ExhibitorsService {
     findById(id: string): Promise<{
         tags: ({
             tag: {
-                createdAt: Date;
-                title: string | null;
-                name: string;
                 id: string;
+                createdAt: Date;
+                name: string;
+                title: string | null;
                 color: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
             };
         } & {
-            exhibitorId: string;
             id: string;
+            exhibitorId: string;
             tagId: string;
         })[];
         assets: ({
             asset: {
-                createdAt: Date;
                 id: string;
+                createdAt: Date;
                 deletedAt: Date | null;
+                type: string | null;
                 createdBy: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
                 url: string;
-                type: string | null;
             };
         } & {
-            exhibitorId: string;
             id: string;
             role: string | null;
+            exhibitorId: string;
             assetId: string;
         })[];
-        products: ({
-            assets: ({
-                asset: {
-                    createdAt: Date;
-                    id: string;
-                    deletedAt: Date | null;
-                    createdBy: string | null;
-                    meta: import("@prisma/client/runtime/library").JsonValue | null;
-                    url: string;
-                    type: string | null;
-                };
-            } & {
-                id: string;
-                role: string | null;
-                assetId: string;
-                productId: string;
-            })[];
-        } & {
-            exhibitorId: string;
-            categoryId: string | null;
-            inStock: boolean;
-            featured: boolean;
-            createdAt: Date;
-            shortDescription: string | null;
-            description: string | null;
-            title: string | null;
-            name: string;
-            price: import("@prisma/client/runtime/library").Decimal | null;
-            id: string;
-            imageUrl: string | null;
-            metadata: import("@prisma/client/runtime/library").JsonValue | null;
-            updatedAt: Date;
-            deletedAt: Date | null;
-        })[];
         events: {
-            exhibitorId: string | null;
-            createdAt: Date;
-            description: string | null;
-            title: string;
-            name: string;
             id: string;
+            createdAt: Date;
+            name: string;
             updatedAt: Date;
             deletedAt: Date | null;
+            description: string | null;
+            exhibitorId: string | null;
+            title: string;
             location: string | null;
             createdById: string | null;
             color: string | null;
@@ -104,14 +70,48 @@ export declare class ExhibitorsService {
             timezone: string | null;
             published: boolean;
         }[];
+        products: ({
+            assets: ({
+                asset: {
+                    id: string;
+                    createdAt: Date;
+                    deletedAt: Date | null;
+                    type: string | null;
+                    createdBy: string | null;
+                    meta: import("@prisma/client/runtime/library").JsonValue | null;
+                    url: string;
+                };
+            } & {
+                id: string;
+                role: string | null;
+                assetId: string;
+                productId: string;
+            })[];
+        } & {
+            id: string;
+            metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            createdAt: Date;
+            name: string;
+            updatedAt: Date;
+            deletedAt: Date | null;
+            description: string | null;
+            exhibitorId: string;
+            categoryId: string | null;
+            inStock: boolean;
+            featured: boolean;
+            shortDescription: string | null;
+            title: string | null;
+            price: import("@prisma/client/runtime/library").Decimal | null;
+            imageUrl: string | null;
+        })[];
     } & {
-        createdAt: Date;
-        description: string | null;
-        title: string | null;
-        name: string;
         id: string;
+        createdAt: Date;
+        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
+        description: string | null;
+        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -119,13 +119,13 @@ export declare class ExhibitorsService {
         createdById: string | null;
     }>;
     create(data: any, userId?: string): Promise<{
-        createdAt: Date;
-        description: string | null;
-        title: string | null;
-        name: string;
         id: string;
+        createdAt: Date;
+        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
+        description: string | null;
+        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -133,13 +133,13 @@ export declare class ExhibitorsService {
         createdById: string | null;
     }>;
     update(id: string, data: any): Promise<{
-        createdAt: Date;
-        description: string | null;
-        title: string | null;
-        name: string;
         id: string;
+        createdAt: Date;
+        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
+        description: string | null;
+        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -147,13 +147,13 @@ export declare class ExhibitorsService {
         createdById: string | null;
     }>;
     softDelete(id: string): Promise<{
-        createdAt: Date;
-        description: string | null;
-        title: string | null;
-        name: string;
         id: string;
+        createdAt: Date;
+        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
+        description: string | null;
+        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -162,18 +162,18 @@ export declare class ExhibitorsService {
     }>;
     linkAsset(exhibitorId: string, assetId: string, role?: string): Promise<{
         asset: {
-            createdAt: Date;
             id: string;
+            createdAt: Date;
             deletedAt: Date | null;
+            type: string | null;
             createdBy: string | null;
             meta: import("@prisma/client/runtime/library").JsonValue | null;
             url: string;
-            type: string | null;
         };
     } & {
-        exhibitorId: string;
         id: string;
         role: string | null;
+        exhibitorId: string;
         assetId: string;
     }>;
 }

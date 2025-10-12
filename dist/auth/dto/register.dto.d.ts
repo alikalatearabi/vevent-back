@@ -1,6 +1,10 @@
 export declare class RegisterDto {
-    firstname: string;
-    lastname: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
+    phone: string;
+    company?: string;
+    jobTitle?: string;
+    toc: boolean;
 }

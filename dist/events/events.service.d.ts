@@ -5,15 +5,15 @@ export declare class EventsService {
     get db(): any;
     findMany(opts: any): Promise<{
         data: {
-            exhibitorId: string;
-            title: string;
-            name: string;
             id: string;
-            location: string;
+            name: string;
+            title: string;
             color: string;
             start: Date;
             end: Date;
             timed: boolean;
+            location: string;
+            exhibitorId: string;
             timezone: string;
         }[];
         meta: {
@@ -23,156 +23,166 @@ export declare class EventsService {
         };
     }>;
     findById(id: string): Promise<{
-        tags: ({
-            tag: {
-                createdAt: Date;
-                title: string | null;
-                name: string;
+        assets: ({
+            asset: {
                 id: string;
-                color: string | null;
+                createdAt: Date;
+                deletedAt: Date | null;
+                createdBy: string | null;
+                url: string;
+                type: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
             };
         } & {
             id: string;
-            tagId: string;
+            role: string | null;
             eventId: string;
+            assetId: string;
         })[];
-        exhibitor: {
-            name: string;
+        attendees: {
             id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+        }[];
+        exhibitor: {
+            id: string;
+            name: string;
             assets: ({
                 asset: {
-                    createdAt: Date;
                     id: string;
+                    createdAt: Date;
                     deletedAt: Date | null;
                     createdBy: string | null;
-                    meta: import("@prisma/client/runtime/library").JsonValue | null;
                     url: string;
                     type: string | null;
+                    meta: import("@prisma/client/runtime/library").JsonValue | null;
                 };
             } & {
-                exhibitorId: string;
                 id: string;
+                exhibitorId: string;
                 role: string | null;
                 assetId: string;
             })[];
         };
-        assets: ({
-            asset: {
-                createdAt: Date;
-                id: string;
-                deletedAt: Date | null;
-                createdBy: string | null;
-                meta: import("@prisma/client/runtime/library").JsonValue | null;
-                url: string;
-                type: string | null;
-            };
-        } & {
-            id: string;
-            role: string | null;
-            assetId: string;
-            eventId: string;
-        })[];
-        attendees: {
-            name: string;
-            id: string;
-            email: string;
-        }[];
         speakers: ({
             user: {
                 id: string;
-                email: string;
                 firstname: string;
                 lastname: string;
+                email: string;
             };
         } & {
             id: string;
             role: string | null;
-            eventId: string;
             userId: string;
+            eventId: string;
             order: number | null;
         })[];
+        tags: ({
+            tag: {
+                id: string;
+                name: string;
+                title: string | null;
+                color: string | null;
+                createdAt: Date;
+                meta: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+        } & {
+            id: string;
+            eventId: string;
+            tagId: string;
+        })[];
     } & {
-        exhibitorId: string | null;
-        createdAt: Date;
-        description: string | null;
-        title: string;
-        name: string;
         id: string;
-        updatedAt: Date;
-        deletedAt: Date | null;
-        location: string | null;
-        createdById: string | null;
+        name: string;
+        title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
         timed: boolean;
+        location: string | null;
+        exhibitorId: string | null;
         timezone: string | null;
         published: boolean;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     create(data: any, userId?: string): Promise<{
-        exhibitorId: string | null;
-        createdAt: Date;
-        description: string | null;
-        title: string;
-        name: string;
         id: string;
-        updatedAt: Date;
-        deletedAt: Date | null;
-        location: string | null;
-        createdById: string | null;
+        name: string;
+        title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
         timed: boolean;
+        location: string | null;
+        exhibitorId: string | null;
         timezone: string | null;
         published: boolean;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     update(id: string, data: any): Promise<{
-        exhibitorId: string | null;
-        createdAt: Date;
-        description: string | null;
-        title: string;
-        name: string;
         id: string;
-        updatedAt: Date;
-        deletedAt: Date | null;
-        location: string | null;
-        createdById: string | null;
+        name: string;
+        title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
         timed: boolean;
+        location: string | null;
+        exhibitorId: string | null;
         timezone: string | null;
         published: boolean;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     softDelete(id: string): Promise<{
-        exhibitorId: string | null;
-        createdAt: Date;
-        description: string | null;
-        title: string;
-        name: string;
         id: string;
-        updatedAt: Date;
-        deletedAt: Date | null;
-        location: string | null;
-        createdById: string | null;
+        name: string;
+        title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
         timed: boolean;
+        location: string | null;
+        exhibitorId: string | null;
         timezone: string | null;
         published: boolean;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     register(id: string, payload: any): Promise<{
-        createdAt: Date;
-        name: string;
         id: string;
-        metadata: import("@prisma/client/runtime/library").JsonValue | null;
-        eventId: string;
-        email: string;
+        createdAt: Date;
+        email: string | null;
+        phone: string | null;
+        company: string | null;
+        jobTitle: string | null;
+        role: import(".prisma/client").$Enums.AttendeeRole;
         userId: string | null;
+        eventId: string;
         ticketType: string | null;
         checkedIn: boolean;
+        metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        avatar: string | null;
+        firstName: string;
+        lastName: string;
+        showCompany: boolean;
+        showEmail: boolean;
+        showPhone: boolean;
     }>;
 }

@@ -45,22 +45,46 @@ let AuthService = class AuthService {
         return parseInt(s);
     }
     async register(dto, res) {
+        if (!dto.toc) {
+            throw new common_1.BadRequestException('You must accept the terms and conditions to register');
+        }
         const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
-        if (existing)
-            throw new common_1.BadRequestException('Email already in use');
+        if (existing) {
+            throw new common_1.ConflictException('Email already in use');
+        }
         const passwordHash = await argon2.hash(dto.password);
         const user = await this.prisma.user.create({
             data: {
-                firstname: dto.firstname,
-                lastname: dto.lastname,
+                firstname: dto.firstName,
+                lastname: dto.lastName,
                 email: dto.email,
                 passwordHash,
+                phone: dto.phone,
+                company: dto.company || null,
+                jobTitle: dto.jobTitle || null,
+                role: 'USER',
+                isActive: true,
+            },
+            select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+                role: true,
+                avatarAssetId: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+                deletedAt: true,
             },
         });
         const accessToken = await this.createAccessToken(user.id);
         const { raw, db } = await this.refreshTokenService.create(user.id, this.getRefreshExpiresSeconds());
         res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
-        return { user: await this.prisma.user.findUnique({ where: { id: user.id } }), accessToken };
+        return {
+            user,
+            accessToken
+        };
     }
     async login(dto, res) {
         const user = await this.prisma.user.findUnique({ where: { email: dto.email } });

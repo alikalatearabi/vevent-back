@@ -17,6 +17,7 @@ const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const exhibitors_module_1 = require("./exhibitors/exhibitors.module");
 const events_module_1 = require("./events/events.module");
+const attendees_module_1 = require("./attendees/attendees.module");
 const prisma_module_1 = require("./prisma/prisma.module");
 const common_module_1 = require("./common/common.module");
 let AppController = class AppController {
@@ -58,6 +59,7 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             exhibitors_module_1.ExhibitorsModule,
             events_module_1.EventsModule,
+            attendees_module_1.AttendeesModule,
             products_module_1.ProductsModule,
             prisma_module_1.PrismaModule
         ],

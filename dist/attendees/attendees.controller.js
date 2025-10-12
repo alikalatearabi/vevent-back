@@ -16,14 +16,37 @@ exports.AttendeesController = void 0;
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const swagger_1 = require("@nestjs/swagger");
+const attendees_service_1 = require("./attendees.service");
+const connection_request_service_1 = require("./connection-request.service");
+const connection_request_dto_1 = require("./dto/connection-request.dto");
 let AttendeesController = class AttendeesController {
+    constructor(attendeesService, connectionRequestService) {
+        this.attendeesService = attendeesService;
+        this.connectionRequestService = connectionRequestService;
+    }
     async checkin(id, req) {
-        const prisma = req.app.get('PRISMA');
-        const attendee = await prisma.attendee.findUnique({ where: { id } });
-        if (!attendee)
-            throw new common_1.NotFoundException();
-        await prisma.attendee.update({ where: { id }, data: { checkedIn: true } });
-        return { ok: true };
+        return this.attendeesService.checkinAttendee(id);
+    }
+    async getEventAttendees(eventId) {
+        return this.attendeesService.getEventAttendees(eventId);
+    }
+    async getEventSpeakers(eventId) {
+        return this.attendeesService.getEventAttendees(eventId, 'SPEAKER');
+    }
+    async getEventVisitors(eventId) {
+        return this.attendeesService.getEventAttendees(eventId, 'VISITOR');
+    }
+    async createConnectionRequest(dto, req) {
+        return this.connectionRequestService.createConnectionRequest(req.user.sub, dto);
+    }
+    async getConnectionRequests(req, eventId) {
+        return this.connectionRequestService.getConnectionRequests(req.user.sub, eventId);
+    }
+    async updateConnectionRequest(requestId, dto, req) {
+        return this.connectionRequestService.updateConnectionRequest(requestId, req.user.sub, dto);
+    }
+    async deleteConnectionRequest(requestId, req) {
+        return this.connectionRequestService.deleteConnectionRequest(requestId, req.user.sub);
     }
 };
 exports.AttendeesController = AttendeesController;
@@ -31,15 +54,85 @@ __decorate([
     (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, swagger_1.ApiOperation)({ summary: 'Check in an attendee' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Checked in' }),
-    (0, common_1.Patch)(':id/checkin'),
+    (0, common_1.Patch)('attendees/:id/checkin'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendeesController.prototype, "checkin", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all attendees for an event' }),
+    (0, common_1.Get)('events/:eventId/attendees'),
+    __param(0, (0, common_1.Param)('eventId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "getEventAttendees", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Get speakers for an event' }),
+    (0, common_1.Get)('events/:eventId/attendees/speakers'),
+    __param(0, (0, common_1.Param)('eventId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "getEventSpeakers", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Get visitors for an event' }),
+    (0, common_1.Get)('events/:eventId/attendees/visitors'),
+    __param(0, (0, common_1.Param)('eventId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "getEventVisitors", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Send a connection request' }),
+    (0, common_1.Post)('connection-requests'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [connection_request_dto_1.CreateConnectionRequestDto, Object]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "createConnectionRequest", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all connection requests for current user' }),
+    (0, common_1.Get)('connection-requests'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('eventId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "getConnectionRequests", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Accept or reject a connection request' }),
+    (0, common_1.Put)('connection-requests/:requestId'),
+    __param(0, (0, common_1.Param)('requestId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, connection_request_dto_1.UpdateConnectionRequestDto, Object]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "updateConnectionRequest", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Withdraw a connection request' }),
+    (0, common_1.Delete)('connection-requests/:requestId'),
+    __param(0, (0, common_1.Param)('requestId')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "deleteConnectionRequest", null);
 exports.AttendeesController = AttendeesController = __decorate([
     (0, swagger_1.ApiTags)('Attendees'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.Controller)('api/v1/attendees')
+    (0, common_1.Controller)('api/v1'),
+    __metadata("design:paramtypes", [attendees_service_1.AttendeesService,
+        connection_request_service_1.ConnectionRequestService])
 ], AttendeesController);

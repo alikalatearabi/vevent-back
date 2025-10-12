@@ -7,13 +7,13 @@ export declare class ExhibitorsAdminController {
     private readonly assetService;
     constructor(exhibitorsService: ExhibitorsService, assetService: AssetService);
     create(dto: CreateExhibitorDto, req: any, res: any): Promise<{
-        createdAt: Date;
-        description: string | null;
-        title: string | null;
-        name: string;
         id: string;
+        createdAt: Date;
+        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
+        description: string | null;
+        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;
@@ -21,13 +21,13 @@ export declare class ExhibitorsAdminController {
         createdById: string | null;
     }>;
     update(id: string, dto: UpdateExhibitorDto, req: any): Promise<{
-        createdAt: Date;
-        description: string | null;
-        title: string | null;
-        name: string;
         id: string;
+        createdAt: Date;
+        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
+        description: string | null;
+        title: string | null;
         website: string | null;
         location: string | null;
         sponsor: boolean;

@@ -441,8 +441,13 @@ async function seedAttendees(events: any[]) {
           data: {
             eventId: event.id,
             userId: user.id,
-            name: `${user.firstname} ${user.lastname}`,
+            firstName: user.firstname,
+            lastName: user.lastname,
             email: user.email,
+            company: user.company,
+            jobTitle: user.jobTitle,
+            phone: user.phone,
+            role: Math.random() > 0.9 ? 'SPEAKER' : 'VISITOR', // 10% speakers, 90% visitors
             ticketType: Math.random() > 0.5 ? 'VIP' : 'Regular',
             checkedIn: Math.random() > 0.7 // 30% chance of being checked in
           }

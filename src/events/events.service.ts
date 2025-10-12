@@ -66,7 +66,7 @@ export class EventsService {
         exhibitor: { select: { id: true, name: true, assets: { where: { role: 'cover' }, include: { asset: true } } } },
         tags: { include: { tag: true } },
         assets: { include: { asset: true } },
-        attendees: { select: { id: true, name: true, email: true }, take: 50 },
+        attendees: { select: { id: true, firstName: true, lastName: true, email: true }, take: 50 },
       },
     });
     return e;
@@ -150,8 +150,20 @@ export class EventsService {
         if (exists) return exists;
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) throw new BadRequestException('User not found');
-        const attendeeName = name || `${user.firstname} ${user.lastname}`;
-        const at = await tx.attendee.create({ data: { event: { connect: { id } }, user: { connect: { id: userId } }, name: attendeeName, email: user.email } });
+        const firstName = user.firstname;
+        const lastName = user.lastname;
+        const at = await tx.attendee.create({ 
+          data: { 
+            event: { connect: { id } }, 
+            user: { connect: { id: userId } }, 
+            firstName, 
+            lastName,
+            email: user.email,
+            company: user.company,
+            jobTitle: user.jobTitle,
+            phone: user.phone
+          } 
+        });
         return at;
       }
 
@@ -159,7 +171,18 @@ export class EventsService {
       if (!email) throw new BadRequestException('Email required for anonymous registration');
       const exists = await tx.attendee.findFirst({ where: { eventId: id, email } });
       if (exists) return exists;
-      const at = await tx.attendee.create({ data: { event: { connect: { id } }, name, email } });
+      // Split name into firstName and lastName for anonymous registration
+      const nameParts = (name || 'Anonymous User').split(' ');
+      const firstName = nameParts[0] || 'Anonymous';
+      const lastName = nameParts.slice(1).join(' ') || 'User';
+      const at = await tx.attendee.create({ 
+        data: { 
+          event: { connect: { id } }, 
+          firstName, 
+          lastName, 
+          email 
+        } 
+      });
       return at;
     });
   }
