@@ -9,18 +9,18 @@ async function bootstrap() {
   // ✅ Use Nest's built-in enableCors, not app.use(cors())
   app.enableCors({
     origin: [
-      // Development
+      // Development origins
       'http://0.0.0.0:3000',
       'http://localhost:3000',
       'http://185.149.192.60:3000',
-      // Production HTTPS
+      // Production HTTPS origins
       'https://veventexpo.ir',
       'https://www.veventexpo.ir',
       'https://api.veventexpo.ir'
     ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization',
+    allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
   });
 
   app.use(cookieParser());
