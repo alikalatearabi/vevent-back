@@ -9,9 +9,14 @@ async function bootstrap() {
   // ✅ Use Nest's built-in enableCors, not app.use(cors())
   app.enableCors({
     origin: [
+      // Development
       'http://0.0.0.0:3000',
       'http://localhost:3000',
-      'http://185.149.192.60:3000'
+      'http://185.149.192.60:3000',
+      // Production HTTPS
+      'https://veventexpo.ir',
+      'https://www.veventexpo.ir',
+      'https://api.veventexpo.ir'
     ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

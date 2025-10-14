@@ -52,14 +52,33 @@ services:
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: vevent-assets
       MINIO_USE_SSL: false
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
     command: sh -c "npx prisma db push && node dist/main.js"
+
+  nginx:
+    image: nginx:alpine
+    container_name: vevent-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres-data:
