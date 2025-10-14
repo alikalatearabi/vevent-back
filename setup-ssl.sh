@@ -51,21 +51,41 @@ mkdir -p $WEBROOT
 print_status "Stopping any running nginx containers..."
 docker compose down nginx 2>/dev/null || true
 
-# Get certificate using standalone mode (first time)
+# Get certificate using webroot method (works with running web servers)
 if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
-    print_status "Obtaining SSL certificate for $DOMAIN..."
+    print_status "Obtaining SSL certificate for $DOMAIN using webroot method..."
+    
+    # First, start a temporary nginx container to serve the webroot
+    print_status "Starting temporary nginx for certificate validation..."
+    docker run -d --name temp-nginx \
+        -p 80:80 \
+        -v $WEBROOT:/usr/share/nginx/html \
+        nginx:alpine
+    
+    # Wait a moment for nginx to start
+    sleep 3
+    
+    # Get the certificate
     certbot certonly \
-        --standalone \
+        --webroot \
+        --webroot-path=$WEBROOT \
         --email $EMAIL \
         --agree-tos \
         --no-eff-email \
         --domains $DOMAIN \
         --non-interactive
     
+    # Stop the temporary nginx
+    docker stop temp-nginx
+    docker rm temp-nginx
+    
     if [ $? -eq 0 ]; then
         print_status "✅ SSL certificate obtained successfully!"
     else
         print_error "❌ Failed to obtain SSL certificate"
+        print_error "Cleaning up temporary nginx..."
+        docker stop temp-nginx 2>/dev/null || true
+        docker rm temp-nginx 2>/dev/null || true
         exit 1
     fi
 else
