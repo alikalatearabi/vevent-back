@@ -33,9 +33,3 @@ coverage/
 # Misc
 *.tgz
 cookies*.txt
-
-# SSL/TLS (certificates are managed by Let's Encrypt on server)
-*.pem
-*.key
-*.crt
-*.csr

@@ -1,144 +1,94 @@
-# HTTPS SSL Setup Guide
+# HTTPS Setup Guide
 
-## Overview
-This guide helps you set up HTTPS for your VEvent backend to fix the mixed content error when your frontend (https://veventexpo.ir) tries to access your backend.
+## Problem
+The frontend is served over HTTPS (`https://veventexpo.ir`) but was trying to make API calls to the backend over HTTP (`http://185.149.192.60:3001`). This is blocked by browsers due to Mixed Content security policy.
 
-## The Problem
-- Frontend: `https://veventexpo.ir` (HTTPS)
-- Backend: `http://185.149.192.60:3001` (HTTP)
-- **Mixed Content Error**: Browsers block HTTPS → HTTP requests
+## Solution
+Configure nginx to proxy API requests from the frontend to the backend, so all requests appear to come from the same HTTPS domain.
 
-## The Solution
-Set up SSL certificates and Nginx reverse proxy for your backend.
+## Implementation
 
-## Prerequisites
-1. Domain name pointing to your server (e.g., `api.veventexpo.ir`)
-2. Server with ports 80 and 443 open
-3. Root access to the server
+### 1. Updated Backend CORS
+- Added `https://veventexpo.ir` and `https://www.veventexpo.ir` to allowed origins
+- Added `Cache-Control` to allowed headers
 
-## Step 1: Set up DNS
-Point your subdomain to your server:
+### 2. Created nginx Configuration
+- Added `/api/` location block that proxies to backend
+- Strips `/api` prefix and forwards to backend at `http://185.149.192.60:3001`
+- Includes proper CORS headers and preflight handling
+- Increased `client_max_body_size` to 100M for file uploads
+
+## Deployment Steps
+
+### On Frontend Server (`/home/vevent-front/`)
+
+1. **Update nginx configuration:**
+```bash
+cd /home/vevent-front
+# Copy the new nginx.conf from backend repo
+curl -o nginx.conf https://raw.githubusercontent.com/alikalatearabi/vevent-back/main/nginx.conf
 ```
-api.veventexpo.ir → 185.149.192.60
+
+2. **Restart nginx:**
+```bash
+docker compose restart nginx
+# or
+docker restart vevent-nginx
 ```
 
-## Step 2: Run SSL Setup Script
-On your server, run:
+### On Backend Server (`/home/vevent-back/`)
+
+3. **Deploy backend changes:**
 ```bash
 cd /home/vevent-back
-sudo ./setup-ssl.sh
+git pull origin main
+docker compose build backend
+docker compose up -d backend
 ```
 
-This script will:
-- Install certbot if needed
-- Get SSL certificates from Let's Encrypt
-- Set up automatic renewal
-- Generate DH parameters for security
+## Frontend Changes Required
 
-## Step 3: Deploy with HTTPS
-```bash
-# Stop current services
-docker compose down
-
-# Build and start with Nginx
-docker compose up -d
-
-# Check status
-docker compose ps
-```
-
-## Step 4: Update Frontend Configuration
-Change your frontend API calls from:
+Update your frontend API base URL from:
 ```javascript
-// OLD - HTTP (causes mixed content error)
-const API_BASE_URL = 'http://185.149.192.60:3001'
+// OLD - HTTP direct to backend
+const apiUrl = 'http://185.149.192.60:3001/api/v1'
 
-// NEW - HTTPS (works with HTTPS frontend)
-const API_BASE_URL = 'https://api.veventexpo.ir'
+// NEW - HTTPS through nginx proxy
+const apiUrl = 'https://veventexpo.ir/api/v1'
 ```
 
-## Step 5: Test the Setup
+## API Endpoints After Setup
+
+All API calls should now use:
+- **Base URL:** `https://veventexpo.ir/api/v1`
+- **Login:** `https://veventexpo.ir/api/v1/auth/login`
+- **Events:** `https://veventexpo.ir/api/v1/events`
+- **Products:** `https://veventexpo.ir/api/v1/products`
+- **Exhibitors:** `https://veventexpo.ir/api/v1/exhibitors`
+
+## How It Works
+
+1. Frontend makes HTTPS request to `https://veventexpo.ir/api/v1/auth/login`
+2. Nginx receives the request and matches `/api/` location
+3. Nginx strips `/api` prefix → `/v1/auth/login`
+4. Nginx proxies to backend: `http://185.149.192.60:3001/v1/auth/login`
+5. Backend processes request and returns response
+6. Nginx forwards response back to frontend over HTTPS
+
+## Testing
+
+After deployment, test with:
 ```bash
-# Test HTTP redirect to HTTPS
-curl -I http://api.veventexpo.ir
-# Should return: 301 Moved Permanently, Location: https://...
-
-# Test HTTPS endpoint
-curl -I https://api.veventexpo.ir/api/v1/events
-# Should return: 200 OK
-
-# Test from frontend
-fetch('https://api.veventexpo.ir/api/v1/events', { credentials: 'include' })
-  .then(r => r.json())
-  .then(d => console.log('✅ HTTPS Working!', d))
+# Should work over HTTPS
+curl -X POST https://veventexpo.ir/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@vevent.com","password":"Admin@123456"}'
 ```
 
-## Architecture
-```
-Frontend (HTTPS) → Nginx (SSL) → Backend (HTTP internal)
-https://veventexpo.ir → https://api.veventexpo.ir → backend:3001
-```
+## Benefits
 
-## Security Features
-- **SSL/TLS encryption** for all API traffic
-- **Automatic HTTP → HTTPS redirect**
-- **Security headers** (HSTS, X-Frame-Options, etc.)
-- **Rate limiting** (10 requests/second per IP)
-- **Gzip compression** for better performance
-
-## Certificate Renewal
-Certificates auto-renew via cron job:
-```bash
-# Check renewal status
-sudo certbot certificates
-
-# Test renewal (dry run)
-sudo certbot renew --dry-run
-```
-
-## Troubleshooting
-
-### Certificate Issues
-```bash
-# Check certificate
-sudo certbot certificates
-
-# Renew manually
-sudo certbot renew --force-renewal
-```
-
-### Nginx Issues
-```bash
-# Check Nginx logs
-docker compose logs nginx
-
-# Test Nginx config
-docker compose exec nginx nginx -t
-```
-
-### Port Issues
-```bash
-# Check if ports are open
-sudo netstat -tlnp | grep -E ':80|:443'
-
-# Check firewall
-sudo ufw status
-```
-
-## Files Created
-- `nginx/nginx.conf` - Nginx configuration with SSL
-- `setup-ssl.sh` - SSL certificate setup script
-- Updated `docker-compose.yml` with Nginx service
-- Updated `src/main.ts` with HTTPS CORS origins
-
-## Next Steps
-1. Run the SSL setup script on your server
-2. Update your frontend to use `https://api.veventexpo.ir`
-3. Test all API endpoints with HTTPS
-4. Monitor certificate renewal
-
-## Support
-If you encounter issues:
-1. Check the logs: `docker compose logs`
-2. Verify DNS: `nslookup api.veventexpo.ir`
-3. Test SSL: `openssl s_client -connect api.veventexpo.ir:443`
+- ✅ No Mixed Content errors
+- ✅ Single domain for frontend and API
+- ✅ Proper SSL/TLS encryption for API calls
+- ✅ Simplified frontend configuration
+- ✅ Better security (no direct backend exposure)
