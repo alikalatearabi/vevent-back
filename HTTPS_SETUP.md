@@ -14,7 +14,7 @@ Configure nginx to proxy API requests from the frontend to the backend, so all r
 
 ### 2. Created nginx Configuration
 - Added `/api/` location block that proxies to backend
-- Strips `/api` prefix and forwards to backend at `http://185.149.192.60:3001`
+- Passes full path including `/api` to backend (backend expects `/api/v1/auth/login`)
 - Includes proper CORS headers and preflight handling
 - Increased `client_max_body_size` to 100M for file uploads
 
@@ -70,10 +70,9 @@ All API calls should now use:
 
 1. Frontend makes HTTPS request to `https://veventexpo.ir/api/v1/auth/login`
 2. Nginx receives the request and matches `/api/` location
-3. Nginx strips `/api` prefix → `/v1/auth/login`
-4. Nginx proxies to backend: `http://185.149.192.60:3001/v1/auth/login`
-5. Backend processes request and returns response
-6. Nginx forwards response back to frontend over HTTPS
+3. Nginx passes full path to backend: `http://185.149.192.60:3001/api/v1/auth/login`
+4. Backend processes request and returns response
+5. Nginx forwards response back to frontend over HTTPS
 
 ## Testing
 
