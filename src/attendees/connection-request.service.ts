@@ -8,16 +8,46 @@ export class ConnectionRequestService {
   constructor(@Inject('PRISMA') private readonly prisma: PrismaClient) {}
 
   async createConnectionRequest(currentUserId: string, dto: CreateConnectionRequestDto) {
-    // Get current user's attendee record for the event
-    const requesterAttendee = await this.prisma.attendee.findFirst({
+    // Check if current user is either an attendee for the event OR the event creator
+    let requesterAttendee = await this.prisma.attendee.findFirst({
       where: {
         userId: currentUserId,
         ...(dto.eventId && { eventId: dto.eventId })
       }
     });
 
+    // If not an attendee, check if user is the event creator
+    if (!requesterAttendee && dto.eventId) {
+      const event = await this.prisma.event.findFirst({
+        where: {
+          id: dto.eventId,
+          createdById: currentUserId
+        },
+        include: {
+          createdBy: true
+        }
+      });
+
+      if (event) {
+        // Auto-create attendee record for event creator
+        requesterAttendee = await this.prisma.attendee.create({
+          data: {
+            userId: currentUserId,
+            eventId: dto.eventId,
+            email: event.createdBy.email,
+            firstName: event.createdBy.firstname || 'Event',
+            lastName: event.createdBy.lastname || 'Creator',
+            role: 'ADMIN',
+            showEmail: true,
+            showPhone: true,
+            showCompany: true
+          }
+        });
+      }
+    }
+
     if (!requesterAttendee) {
-      throw new NotFoundException('You are not registered as an attendee for this event');
+      throw new NotFoundException('You are not associated with this event (must be attendee or event creator)');
     }
 
     // Get receiver attendee record

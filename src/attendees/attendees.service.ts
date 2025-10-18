@@ -29,8 +29,20 @@ export class AttendeesService {
       }
     });
 
+    // If not an attendee, check if user is the event creator
+    let isEventCreator = false;
     if (!currentUserAttendee) {
-      throw new NotFoundException('You are not registered as an attendee for this event');
+      const event = await this.prisma.event.findFirst({
+        where: {
+          id: eventId,
+          createdById: currentUserId
+        }
+      });
+      isEventCreator = !!event;
+    }
+
+    if (!currentUserAttendee && !isEventCreator) {
+      throw new NotFoundException('You are not associated with this event (must be attendee or event creator)');
     }
 
     const whereClause: any = { eventId };
