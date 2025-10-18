@@ -27,14 +27,14 @@ let AttendeesController = class AttendeesController {
     async checkin(id, req) {
         return this.attendeesService.checkinAttendee(id);
     }
-    async getEventAttendees(eventId) {
-        return this.attendeesService.getEventAttendees(eventId);
+    async getEventAttendees(eventId, req) {
+        return this.attendeesService.getEventAttendees(eventId, req.user.sub);
     }
-    async getEventSpeakers(eventId) {
-        return this.attendeesService.getEventAttendees(eventId, 'SPEAKER');
+    async getEventSpeakers(eventId, req) {
+        return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'SPEAKER');
     }
-    async getEventVisitors(eventId) {
-        return this.attendeesService.getEventAttendees(eventId, 'VISITOR');
+    async getEventVisitors(eventId, req) {
+        return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'VISITOR');
     }
     async createConnectionRequest(dto, req) {
         return this.connectionRequestService.createConnectionRequest(req.user.sub, dto);
@@ -66,8 +66,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get all attendees for an event' }),
     (0, common_1.Get)('events/:eventId/attendees'),
     __param(0, (0, common_1.Param)('eventId')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendeesController.prototype, "getEventAttendees", null);
 __decorate([
@@ -75,8 +76,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get speakers for an event' }),
     (0, common_1.Get)('events/:eventId/attendees/speakers'),
     __param(0, (0, common_1.Param)('eventId')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendeesController.prototype, "getEventSpeakers", null);
 __decorate([
@@ -84,8 +86,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get visitors for an event' }),
     (0, common_1.Get)('events/:eventId/attendees/visitors'),
     __param(0, (0, common_1.Param)('eventId')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendeesController.prototype, "getEventVisitors", null);
 __decorate([

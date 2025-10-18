@@ -10,11 +10,13 @@ async function bootstrap() {
         origin: [
             'http://0.0.0.0:3000',
             'http://localhost:3000',
-            'http://185.149.192.60:3000'
+            'http://185.149.192.60:3000',
+            'https://veventexpo.ir',
+            'https://www.veventexpo.ir'
         ],
         credentials: true,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-        allowedHeaders: 'Content-Type, Accept, Authorization',
+        allowedHeaders: 'Content-Type, Accept, Authorization, Cache-Control',
     });
     app.use(cookieParser());
     const config = new swagger_1.DocumentBuilder()

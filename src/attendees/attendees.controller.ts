@@ -27,22 +27,22 @@ export class AttendeesController {
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get all attendees for an event' })
   @Get('events/:eventId/attendees')
-  async getEventAttendees(@Param('eventId') eventId: string) {
-    return this.attendeesService.getEventAttendees(eventId);
+  async getEventAttendees(@Param('eventId') eventId: string, @Req() req: any) {
+    return this.attendeesService.getEventAttendees(eventId, req.user.sub);
   }
 
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get speakers for an event' })
   @Get('events/:eventId/attendees/speakers')
-  async getEventSpeakers(@Param('eventId') eventId: string) {
-    return this.attendeesService.getEventAttendees(eventId, 'SPEAKER');
+  async getEventSpeakers(@Param('eventId') eventId: string, @Req() req: any) {
+    return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'SPEAKER');
   }
 
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get visitors for an event' })
   @Get('events/:eventId/attendees/visitors')
-  async getEventVisitors(@Param('eventId') eventId: string) {
-    return this.attendeesService.getEventAttendees(eventId, 'VISITOR');
+  async getEventVisitors(@Param('eventId') eventId: string, @Req() req: any) {
+    return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'VISITOR');
   }
 
   // Connection request endpoints

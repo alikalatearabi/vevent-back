@@ -20,7 +20,19 @@ export class AttendeesService {
     return { ok: true };
   }
 
-  async getEventAttendees(eventId: string, role?: string) {
+  async getEventAttendees(eventId: string, currentUserId: string, role?: string) {
+    // First, check if the current user is registered as an attendee for this event
+    const currentUserAttendee = await this.prisma.attendee.findFirst({
+      where: {
+        eventId: eventId,
+        userId: currentUserId
+      }
+    });
+
+    if (!currentUserAttendee) {
+      throw new NotFoundException('You are not registered as an attendee for this event');
+    }
+
     const whereClause: any = { eventId };
     if (role) {
       whereClause.role = role;

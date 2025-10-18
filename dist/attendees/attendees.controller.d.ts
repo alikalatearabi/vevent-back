@@ -8,7 +8,7 @@ export declare class AttendeesController {
     checkin(id: string, req: any): Promise<{
         ok: boolean;
     }>;
-    getEventAttendees(eventId: string): Promise<{
+    getEventAttendees(eventId: string, req: any): Promise<{
         data: {
             id: string;
             firstName: string;
@@ -35,7 +35,7 @@ export declare class AttendeesController {
             total: number;
         };
     }>;
-    getEventSpeakers(eventId: string): Promise<{
+    getEventSpeakers(eventId: string, req: any): Promise<{
         data: {
             id: string;
             firstName: string;
@@ -62,7 +62,7 @@ export declare class AttendeesController {
             total: number;
         };
     }>;
-    getEventVisitors(eventId: string): Promise<{
+    getEventVisitors(eventId: string, req: any): Promise<{
         data: {
             id: string;
             firstName: string;
