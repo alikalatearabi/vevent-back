@@ -1,10 +1,40 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Global validation pipe with custom error formatting
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = Object.values(error.constraints || {});
+          return constraints.length > 0 ? constraints[0] : 'Validation failed';
+        });
+        
+        // Check if it's a phone validation error
+        const firstError = errors[0];
+        const isPhoneError = firstError?.property === 'phone' && 
+          Object.keys(firstError.constraints || {}).some(key => key === 'matches');
+        
+        const errorCode = isPhoneError ? 'INVALID_PHONE_FORMAT' : 'VALIDATION_ERROR';
+        
+        return new BadRequestException({
+          success: false,
+          message: messages[0] || 'Validation failed',
+          error: errorCode,
+          errors: messages,
+        });
+      },
+    }),
+  );
 
   // ✅ Use Nest's built-in enableCors, not app.use(cors())
   app.enableCors({

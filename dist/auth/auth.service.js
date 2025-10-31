@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -18,11 +19,16 @@ const jwt_1 = require("@nestjs/jwt");
 const client_1 = require("@prisma/client");
 const argon2 = require("argon2");
 const refresh_token_service_1 = require("./refresh-token.service");
-let AuthService = class AuthService {
-    constructor(jwtService, prisma, refreshTokenService) {
+const otp_cache_service_1 = require("./services/otp-cache.service");
+const sms_service_1 = require("./services/sms.service");
+let AuthService = AuthService_1 = class AuthService {
+    constructor(jwtService, prisma, refreshTokenService, otpCacheService, smsService) {
         this.jwtService = jwtService;
         this.prisma = prisma;
         this.refreshTokenService = refreshTokenService;
+        this.otpCacheService = otpCacheService;
+        this.smsService = smsService;
+        this.logger = new common_1.Logger(AuthService_1.name);
     }
     getAccessExpiresSeconds() {
         const s = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
@@ -136,12 +142,43 @@ let AuthService = class AuthService {
     async validateUserFromJwt(payload) {
         return this.prisma.user.findUnique({ where: { id: payload.sub } });
     }
+    async sendOtp(dto) {
+        const { phone } = dto;
+        const rateLimitResult = this.otpCacheService.checkRateLimit(phone);
+        if (!rateLimitResult.allowed) {
+            throw new common_1.HttpException({
+                success: false,
+                message: 'تعداد درخواست‌های مجاز در ۵ دقیقه گذشته به پایان رسیده است',
+                error: 'RATE_LIMIT_EXCEEDED',
+                retryAfter: rateLimitResult.retryAfter,
+            }, common_1.HttpStatus.TOO_MANY_REQUESTS);
+        }
+        const otpCode = this.otpCacheService.generateOtp();
+        const { sessionId, expiresIn } = await this.otpCacheService.storeOtp(phone, otpCode);
+        try {
+            const smsSent = await this.smsService.sendOtp(phone, otpCode);
+            if (!smsSent) {
+                this.logger.error(`Failed to send SMS to ${phone}, but OTP was generated`);
+            }
+        }
+        catch (error) {
+            this.logger.error(`Error sending SMS to ${phone}: ${error.message}`);
+        }
+        return {
+            success: true,
+            sessionId,
+            message: 'کد تایید به شماره شما ارسال شد',
+            expiresIn,
+        };
+    }
 };
 exports.AuthService = AuthService;
-exports.AuthService = AuthService = __decorate([
+exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, common_1.Inject)('PRISMA')),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         client_1.PrismaClient,
-        refresh_token_service_1.RefreshTokenService])
+        refresh_token_service_1.RefreshTokenService,
+        otp_cache_service_1.OtpCacheService,
+        sms_service_1.SmsService])
 ], AuthService);

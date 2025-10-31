@@ -16,6 +16,8 @@ const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
 const refresh_token_service_1 = require("./refresh-token.service");
+const otp_cache_service_1 = require("./services/otp-cache.service");
+const sms_service_1 = require("./services/sms.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -27,7 +29,7 @@ exports.AuthModule = AuthModule = __decorate([
             prisma_module_1.PrismaModule,
             users_module_1.UsersModule,
         ],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, refresh_token_service_1.RefreshTokenService],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, refresh_token_service_1.RefreshTokenService, otp_cache_service_1.OtpCacheService, sms_service_1.SmsService],
         controllers: [auth_controller_1.AuthController],
         exports: [auth_service_1.AuthService],
     })

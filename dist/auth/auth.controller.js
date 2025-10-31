@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
+const send_otp_dto_1 = require("./dto/send-otp.dto");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -34,6 +35,9 @@ let AuthController = class AuthController {
     async logout(req, res) {
         const cookie = req.cookies?.refreshToken;
         return this.authService.logout(cookie, res);
+    }
+    async sendOtp(dto) {
+        return this.authService.sendOtp(dto);
     }
 };
 exports.AuthController = AuthController;
@@ -69,6 +73,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Post)('send-otp'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [send_otp_dto_1.SendOtpDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "sendOtp", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('api/v1/auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

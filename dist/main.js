@@ -1,11 +1,33 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
+const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.useGlobalPipes(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        exceptionFactory: (errors) => {
+            const messages = errors.map((error) => {
+                const constraints = Object.values(error.constraints || {});
+                return constraints.length > 0 ? constraints[0] : 'Validation failed';
+            });
+            const firstError = errors[0];
+            const isPhoneError = firstError?.property === 'phone' &&
+                Object.keys(firstError.constraints || {}).some(key => key === 'matches');
+            const errorCode = isPhoneError ? 'INVALID_PHONE_FORMAT' : 'VALIDATION_ERROR';
+            return new common_1.BadRequestException({
+                success: false,
+                message: messages[0] || 'Validation failed',
+                error: errorCode,
+                errors: messages,
+            });
+        },
+    }));
     app.enableCors({
         origin: [
             'http://0.0.0.0:3000',

@@ -7,6 +7,8 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
+import { OtpCacheService } from './services/otp-cache.service';
+import { SmsService } from './services/sms.service';
 
 @Module({
   imports: [
@@ -15,7 +17,7 @@ import { RefreshTokenService } from './refresh-token.service';
     PrismaModule,
     UsersModule,
   ],
-  providers: [AuthService, JwtStrategy, RefreshTokenService],
+  providers: [AuthService, JwtStrategy, RefreshTokenService, OtpCacheService, SmsService],
   controllers: [AuthController],
   exports: [AuthService],
 })

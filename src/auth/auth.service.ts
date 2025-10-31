@@ -1,16 +1,23 @@
-import { Inject, Injectable, BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, UnauthorizedException, ConflictException, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { RefreshTokenService } from './refresh-token.service';
 import { RegisterDto } from './dto/register.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { OtpCacheService } from './services/otp-cache.service';
+import { SmsService } from './services/sms.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     @Inject('PRISMA') private readonly prisma: PrismaClient,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly otpCacheService: OtpCacheService,
+    private readonly smsService: SmsService,
   ) {}
 
   private getAccessExpiresSeconds() {
@@ -139,5 +146,55 @@ export class AuthService {
 
   async validateUserFromJwt(payload: any) {
     return this.prisma.user.findUnique({ where: { id: payload.sub } });
+  }
+
+  /**
+   * Send OTP to phone number
+   * @param dto SendOtpDto containing phone number
+   * @returns Success response with sessionId
+   */
+  async sendOtp(dto: SendOtpDto) {
+    const { phone } = dto;
+
+    // 1. Validate phone number format (already validated by DTO decorators)
+    
+    // 2. Check rate limiting
+    const rateLimitResult = this.otpCacheService.checkRateLimit(phone);
+    if (!rateLimitResult.allowed) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'تعداد درخواست‌های مجاز در ۵ دقیقه گذشته به پایان رسیده است',
+          error: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // 3. Generate OTP code
+    const otpCode = this.otpCacheService.generateOtp();
+
+    // 4. Store OTP with hashing
+    const { sessionId, expiresIn } = await this.otpCacheService.storeOtp(phone, otpCode);
+
+    // 5. Send SMS (don't fail if SMS fails, but log the error)
+    try {
+      const smsSent = await this.smsService.sendOtp(phone, otpCode);
+      if (!smsSent) {
+        this.logger.error(`Failed to send SMS to ${phone}, but OTP was generated`);
+      }
+    } catch (error) {
+      // Log error but don't expose it to the user
+      this.logger.error(`Error sending SMS to ${phone}: ${error.message}`);
+    }
+
+    // 6. Return success response
+    return {
+      success: true,
+      sessionId,
+      message: 'کد تایید به شماره شما ارسال شد',
+      expiresIn,
+    };
   }
 }
