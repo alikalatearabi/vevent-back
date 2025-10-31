@@ -28,6 +28,12 @@ let EventsController = class EventsController {
     async findMany(q) {
         return this.eventsService.findMany(q);
     }
+    async getCurrentEvent() {
+        return this.eventsService.getCurrentEvent();
+    }
+    async getActiveEvent() {
+        return this.eventsService.getCurrentEvent();
+    }
     async findById(id) {
         const e = await this.eventsService.findById(id);
         if (!e)
@@ -74,6 +80,24 @@ __decorate([
     __metadata("design:paramtypes", [find_events_dto_1.FindEventsDto]),
     __metadata("design:returntype", Promise)
 ], EventsController.prototype, "findMany", null);
+__decorate([
+    (0, common_1.Get)('current'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get current/active event for registration' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Current event data' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'No active event found' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], EventsController.prototype, "getCurrentEvent", null);
+__decorate([
+    (0, common_1.Get)('active'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get active event (alias for /current)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Active event data' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'No active event found' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], EventsController.prototype, "getActiveEvent", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Event detail' }),

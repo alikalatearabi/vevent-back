@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
+const argon2 = require("argon2");
 let UsersService = class UsersService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -31,6 +32,47 @@ let UsersService = class UsersService {
     async sanitize(user) {
         const { passwordHash, ...rest } = user;
         return rest;
+    }
+    async getUserStatusFlags(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                firstname: true,
+                lastname: true,
+                email: true,
+                company: true,
+                jobTitle: true,
+            },
+        });
+        if (!user) {
+            return {
+                isProfileComplete: false,
+                isEventRegistered: false,
+                isPaymentComplete: false,
+            };
+        }
+        const isProfileComplete = !!(user.firstname &&
+            user.lastname &&
+            user.email &&
+            !user.email.includes('@vevent.temp') &&
+            user.company &&
+            user.jobTitle);
+        const eventRegistrations = await this.prisma.attendee.count({
+            where: { userId },
+        });
+        const isEventRegistered = eventRegistrations > 0;
+        const completedPayments = await this.prisma.payment.count({
+            where: {
+                userId,
+                status: 'COMPLETED',
+            },
+        });
+        const isPaymentComplete = completedPayments > 0;
+        return {
+            isProfileComplete,
+            isEventRegistered,
+            isPaymentComplete,
+        };
     }
     async listFavorites(userId) {
         return this.prisma.favorite.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
@@ -142,6 +184,71 @@ let UsersService = class UsersService {
         catch (err) {
             return false;
         }
+    }
+    async completeProfile(userId, data) {
+        if (!data.toc) {
+            throw new common_1.BadRequestException({
+                success: false,
+                message: 'شما باید قوانین و مقررات را بپذیرید',
+                error: 'TOC_NOT_ACCEPTED',
+            });
+        }
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException({
+                success: false,
+                message: 'کاربر یافت نشد',
+                error: 'USER_NOT_FOUND',
+            });
+        }
+        const existingEmail = await this.prisma.user.findFirst({
+            where: {
+                email: data.email,
+                id: { not: userId },
+            },
+        });
+        if (existingEmail) {
+            throw new common_1.ConflictException({
+                success: false,
+                message: 'این ایمیل قبلاً استفاده شده است',
+                error: 'EMAIL_ALREADY_EXISTS',
+            });
+        }
+        const passwordHash = await argon2.hash(data.password);
+        const updatedUser = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                firstname: data.firstName,
+                lastname: data.lastName,
+                email: data.email,
+                company: data.company || null,
+                jobTitle: data.jobTitle || null,
+                passwordHash,
+            },
+            select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+                phone: true,
+                company: true,
+                jobTitle: true,
+                role: true,
+                avatarAssetId: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        const statusFlags = await this.getUserStatusFlags(userId);
+        return {
+            success: true,
+            message: 'اطلاعات پروفایل با موفقیت تکمیل شد',
+            data: {
+                ...updatedUser,
+                ...statusFlags,
+            },
+        };
     }
 };
 exports.UsersService = UsersService;

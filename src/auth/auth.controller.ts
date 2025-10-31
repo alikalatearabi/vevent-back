@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -33,5 +34,10 @@ export class AuthController {
   @Post('send-otp')
   async sendOtp(@Body() dto: SendOtpDto) {
     return this.authService.sendOtp(dto);
+  }
+
+  @Post('verify-otp')
+  async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res: any) {
+    return this.authService.verifyOtp(dto, res);
   }
 }

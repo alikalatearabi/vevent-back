@@ -1,36 +1,37 @@
 import { UsersService } from './users.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { CreateRecentDto } from './dto/create-recent.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     me(req: any): Promise<Partial<{
         id: string;
         email: string;
-        createdAt: Date;
-        company: string | null;
-        jobTitle: string | null;
-        phone: string;
-        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
+        phone: string;
+        company: string | null;
+        jobTitle: string | null;
+        role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
     }>>;
     listFavorites(req: any): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
+        userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }[]>;
     addFavorite(req: any, dto: CreateFavoriteDto): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
+        userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }>;
@@ -45,13 +46,13 @@ export declare class UsersController {
             id: string;
             createdAt: Date;
             name: string;
-            description: string;
             title: string;
-            location: string;
+            description: string;
             color: string;
             start: Date;
             end: Date;
             timed: boolean;
+            location: string;
             timezone: string;
             published: boolean;
         }[];
@@ -59,6 +60,48 @@ export declare class UsersController {
             total: number;
             created: number;
             registered: number;
+        };
+    }>;
+    completeProfile(req: any, dto: CompleteProfileDto): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            isProfileComplete: boolean;
+            isEventRegistered: boolean;
+            isPaymentComplete: boolean;
+            id: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            phone: string;
+            company: string;
+            jobTitle: string;
+            role: import(".prisma/client").$Enums.Role;
+            avatarAssetId: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    }>;
+    completeProfilePost(req: any, dto: CompleteProfileDto): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            isProfileComplete: boolean;
+            isEventRegistered: boolean;
+            isPaymentComplete: boolean;
+            id: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            phone: string;
+            company: string;
+            jobTitle: string;
+            role: import(".prisma/client").$Enums.Role;
+            avatarAssetId: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
 }

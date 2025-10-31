@@ -7,5 +7,6 @@ export declare class FindEventsDto {
     tag?: string;
     exhibitorId?: string;
     upcoming?: string;
+    published?: boolean;
     tz?: string;
 }

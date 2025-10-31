@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { RefreshTokenService } from './refresh-token.service';
 import { RegisterDto } from './dto/register.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
 export declare class AuthService {
@@ -85,5 +86,19 @@ export declare class AuthService {
         sessionId: string;
         message: string;
         expiresIn: number;
+    }>;
+    verifyOtp(dto: VerifyOtpDto, res: any): Promise<{
+        success: boolean;
+        user: {
+            id: string;
+            phone: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            isProfileComplete: boolean;
+            isEventRegistered: boolean;
+            isPaymentComplete: boolean;
+        };
+        accessToken: string;
     }>;
 }

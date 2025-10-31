@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { ExhibitorsModule } from './exhibitors/exhibitors.module';
 import { EventsModule } from './events/events.module';
 import { AttendeesModule } from './attendees/attendees.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 
@@ -35,6 +36,7 @@ class AppController {
     ExhibitorsModule, 
     EventsModule, 
     AttendeesModule,
+    PaymentsModule,
     ProductsModule, 
     PrismaModule
   ],

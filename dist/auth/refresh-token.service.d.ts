@@ -8,27 +8,27 @@ export declare class RefreshTokenService {
         raw: string;
         db: {
             id: string;
-            userId: string;
             createdAt: Date;
             tokenHash: string;
             expiresAt: Date;
             revoked: boolean;
+            userId: string;
         };
     }>;
     findByRaw(raw: string): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
         tokenHash: string;
         expiresAt: Date;
         revoked: boolean;
+        userId: string;
     }>;
     revoke(id: string): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
         tokenHash: string;
         expiresAt: Date;
         revoked: boolean;
+        userId: string;
     }>;
 }

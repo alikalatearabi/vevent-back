@@ -171,6 +171,119 @@ let AuthService = AuthService_1 = class AuthService {
             expiresIn,
         };
     }
+    async verifyOtp(dto, res) {
+        const { sessionId, otp } = dto;
+        const verificationResult = await this.otpCacheService.verifyOtpBySessionId(sessionId, otp);
+        if (!verificationResult.valid) {
+            if (!verificationResult.phone) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'شناسه نشست یافت نشد یا منقضی شده است',
+                    error: 'SESSION_NOT_FOUND',
+                }, common_1.HttpStatus.NOT_FOUND);
+            }
+            if (verificationResult.attemptsRemaining !== undefined && verificationResult.attemptsRemaining <= 0) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'تعداد تلاش‌های مجاز برای تایید کد تمام شده است',
+                    error: 'MAX_ATTEMPTS_EXCEEDED',
+                }, common_1.HttpStatus.TOO_MANY_REQUESTS);
+            }
+            throw new common_1.BadRequestException({
+                success: false,
+                message: 'کد تایید اشتباه است',
+                error: 'INVALID_OTP',
+                attemptsRemaining: verificationResult.attemptsRemaining || 0,
+            });
+        }
+        const phone = verificationResult.phone;
+        let user = await this.prisma.user.findFirst({
+            where: { phone },
+            select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+                phone: true,
+                company: true,
+                jobTitle: true,
+                role: true,
+                avatarAssetId: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+                deletedAt: true,
+            },
+        });
+        if (!user) {
+            const timestamp = Date.now();
+            const placeholderEmail = `user_${phone}_${timestamp}@vevent.temp`;
+            const tempPassword = `temp_${phone}_${timestamp}`;
+            const passwordHash = await argon2.hash(tempPassword);
+            user = await this.prisma.user.create({
+                data: {
+                    firstname: 'کاربر',
+                    lastname: 'جدید',
+                    email: placeholderEmail,
+                    passwordHash,
+                    phone,
+                    role: 'USER',
+                    isActive: true,
+                },
+                select: {
+                    id: true,
+                    firstname: true,
+                    lastname: true,
+                    email: true,
+                    phone: true,
+                    company: true,
+                    jobTitle: true,
+                    role: true,
+                    avatarAssetId: true,
+                    isActive: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    deletedAt: true,
+                },
+            });
+        }
+        const isProfileComplete = !!(user.firstname &&
+            user.lastname &&
+            user.email &&
+            !user.email.includes('@vevent.temp') &&
+            user.company &&
+            user.jobTitle);
+        const [eventRegistrations, completedPayments] = await Promise.all([
+            this.prisma.attendee.count({
+                where: { userId: user.id },
+            }),
+            this.prisma.payment.count({
+                where: {
+                    userId: user.id,
+                    status: 'COMPLETED',
+                },
+            }),
+        ]);
+        const isEventRegistered = eventRegistrations > 0;
+        const isPaymentComplete = completedPayments > 0;
+        const accessToken = await this.createAccessToken(user.id);
+        const { raw } = await this.refreshTokenService.create(user.id, this.getRefreshExpiresSeconds());
+        res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                phone: user.phone,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                isProfileComplete,
+                isEventRegistered,
+                isPaymentComplete,
+            },
+            accessToken,
+        };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([

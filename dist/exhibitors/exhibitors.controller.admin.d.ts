@@ -9,30 +9,30 @@ export declare class ExhibitorsAdminController {
     create(dto: CreateExhibitorDto, req: any, res: any): Promise<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
-        description: string | null;
+        name: string;
         title: string | null;
-        website: string | null;
+        description: string | null;
         location: string | null;
+        createdById: string | null;
+        website: string | null;
         sponsor: boolean;
         favoriteCount: number;
-        createdById: string | null;
     }>;
     update(id: string, dto: UpdateExhibitorDto, req: any): Promise<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
         deletedAt: Date | null;
-        description: string | null;
+        name: string;
         title: string | null;
-        website: string | null;
+        description: string | null;
         location: string | null;
+        createdById: string | null;
+        website: string | null;
         sponsor: boolean;
         favoriteCount: number;
-        createdById: string | null;
     }>;
     remove(id: string, req: any, res: any): Promise<void>;
     uploadAssets(id: string, files: Array<Express.Multer.File>, req: any): Promise<{

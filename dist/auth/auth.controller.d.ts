@@ -2,6 +2,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
@@ -50,5 +51,19 @@ export declare class AuthController {
         sessionId: string;
         message: string;
         expiresIn: number;
+    }>;
+    verifyOtp(dto: VerifyOtpDto, res: any): Promise<{
+        success: boolean;
+        user: {
+            id: string;
+            phone: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            isProfileComplete: boolean;
+            isEventRegistered: boolean;
+            isPaymentComplete: boolean;
+        };
+        accessToken: string;
     }>;
 }

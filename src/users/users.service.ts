@@ -1,5 +1,6 @@
-import { Inject, Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaClient, User, Prisma } from '@prisma/client';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +21,67 @@ export class UsersService {
   async sanitize(user: User) {
     const { passwordHash, ...rest } = user as any;
     return rest as Partial<User>;
+  }
+
+  /**
+   * Calculate user status flags
+   * @param userId User ID
+   * @returns Status flags object
+   */
+  async getUserStatusFlags(userId: string): Promise<{
+    isProfileComplete: boolean;
+    isEventRegistered: boolean;
+    isPaymentComplete: boolean;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        firstname: true,
+        lastname: true,
+        email: true,
+        company: true,
+        jobTitle: true,
+      },
+    });
+
+    if (!user) {
+      return {
+        isProfileComplete: false,
+        isEventRegistered: false,
+        isPaymentComplete: false,
+      };
+    }
+
+    // Check if profile is complete
+    const isProfileComplete = !!(
+      user.firstname &&
+      user.lastname &&
+      user.email &&
+      !user.email.includes('@vevent.temp') &&
+      user.company &&
+      user.jobTitle
+    );
+
+    // Check if user has registered for any events
+    const eventRegistrations = await this.prisma.attendee.count({
+      where: { userId },
+    });
+    const isEventRegistered = eventRegistrations > 0;
+
+    // Check if user has completed any payments
+    const completedPayments = await this.prisma.payment.count({
+      where: {
+        userId,
+        status: 'COMPLETED',
+      },
+    });
+    const isPaymentComplete = completedPayments > 0;
+
+    return {
+      isProfileComplete,
+      isEventRegistered,
+      isPaymentComplete,
+    };
   }
 
   // favorites
@@ -151,5 +213,96 @@ export class UsersService {
     } catch (err) {
       return false;
     }
+  }
+
+  /**
+   * Complete user profile
+   * Updates user profile information and sets password
+   */
+  async completeProfile(userId: string, data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    company?: string;
+    jobTitle?: string;
+    password: string;
+    toc: boolean;
+  }) {
+    // Validate terms of conditions acceptance
+    if (!data.toc) {
+      throw new BadRequestException({
+        success: false,
+        message: 'شما باید قوانین و مقررات را بپذیرید',
+        error: 'TOC_NOT_ACCEPTED',
+      });
+    }
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException({
+        success: false,
+        message: 'کاربر یافت نشد',
+        error: 'USER_NOT_FOUND',
+      });
+    }
+
+    // Check if email is already taken by another user
+    const existingEmail = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+        id: { not: userId }, // Exclude current user
+      },
+    });
+
+    if (existingEmail) {
+      throw new ConflictException({
+        success: false,
+        message: 'این ایمیل قبلاً استفاده شده است',
+        error: 'EMAIL_ALREADY_EXISTS',
+      });
+    }
+
+    // Hash password
+    const passwordHash = await argon2.hash(data.password);
+
+    // Update user profile
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstname: data.firstName,
+        lastname: data.lastName,
+        email: data.email,
+        company: data.company || null,
+        jobTitle: data.jobTitle || null,
+        passwordHash,
+      },
+      select: {
+        id: true,
+        firstname: true,
+        lastname: true,
+        email: true,
+        phone: true,
+        company: true,
+        jobTitle: true,
+        role: true,
+        avatarAssetId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Get updated status flags
+    const statusFlags = await this.getUserStatusFlags(userId);
+
+    return {
+      success: true,
+      message: 'اطلاعات پروفایل با موفقیت تکمیل شد',
+      data: {
+        ...updatedUser,
+        ...statusFlags,
+      },
+    };
   }
 }

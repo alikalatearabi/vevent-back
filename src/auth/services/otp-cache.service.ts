@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as argon2 from 'argon2';
 
 interface OtpData {
+  phone: string;
   otpHash: string;
   sessionId: string;
   expiresAt: Date;
@@ -18,8 +19,11 @@ interface RateLimitData {
 export class OtpCacheService {
   private readonly logger = new Logger(OtpCacheService.name);
   
-  // In-memory storage for OTP data
+  // In-memory storage for OTP data (key: phone number)
   private otpStore: Map<string, OtpData> = new Map();
+  
+  // Reverse lookup map: sessionId -> phone number
+  private sessionStore: Map<string, string> = new Map();
   
   // In-memory storage for rate limiting
   private rateLimitStore: Map<string, RateLimitData> = new Map();
@@ -93,6 +97,7 @@ export class OtpCacheService {
 
     // Store OTP data
     const otpData: OtpData = {
+      phone,
       otpHash,
       sessionId,
       expiresAt,
@@ -101,6 +106,7 @@ export class OtpCacheService {
     };
 
     this.otpStore.set(phone, otpData);
+    this.sessionStore.set(sessionId, phone);
     this.logger.debug(`OTP stored for phone: ${phone.substring(0, 5)}***`);
 
     return {
@@ -110,54 +116,87 @@ export class OtpCacheService {
   }
 
   /**
-   * Verify OTP code for a phone number
-   * @returns true if valid, false otherwise
+   * Verify OTP code by sessionId
+   * @returns Verification result with phone number and attempts remaining
    */
-  async verifyOtp(phone: string, otpCode: string): Promise<boolean> {
-    const otpData = this.otpStore.get(phone);
+  async verifyOtpBySessionId(sessionId: string, otpCode: string): Promise<{
+    valid: boolean;
+    phone?: string;
+    attemptsRemaining?: number;
+  }> {
+    // Get phone from sessionId
+    const phone = this.sessionStore.get(sessionId);
+    
+    if (!phone) {
+      this.logger.debug(`No OTP session found for sessionId: ${sessionId.substring(0, 8)}***`);
+      return { valid: false };
+    }
 
-    if (!otpData) {
-      this.logger.debug(`No OTP found for phone: ${phone.substring(0, 5)}***`);
-      return false;
+    const otpData = this.otpStore.get(phone);
+    
+    if (!otpData || otpData.sessionId !== sessionId) {
+      this.logger.debug(`OTP data mismatch for sessionId: ${sessionId.substring(0, 8)}***`);
+      this.sessionStore.delete(sessionId);
+      return { valid: false };
     }
 
     // Check if expired
     if (otpData.expiresAt < new Date()) {
       this.logger.debug(`OTP expired for phone: ${phone.substring(0, 5)}***`);
       this.otpStore.delete(phone);
-      return false;
+      this.sessionStore.delete(sessionId);
+      return { valid: false };
     }
 
     // Check if max attempts exceeded
     if (otpData.attempts >= this.otpMaxAttempts) {
       this.logger.debug(`Max attempts exceeded for phone: ${phone.substring(0, 5)}***`);
       this.otpStore.delete(phone);
-      return false;
+      this.sessionStore.delete(sessionId);
+      return { valid: false };
     }
 
-    // Increment attempts
+    // Increment attempts before verification
     otpData.attempts += 1;
+    const attemptsRemaining = this.otpMaxAttempts - otpData.attempts;
 
     // Verify OTP
     try {
       const isValid = await argon2.verify(otpData.otpHash, otpCode);
       
       if (isValid) {
-        // OTP is valid, remove it
+        // OTP is valid, remove it (one-time use)
         this.otpStore.delete(phone);
+        this.sessionStore.delete(sessionId);
         this.logger.debug(`OTP verified successfully for phone: ${phone.substring(0, 5)}***`);
-        return true;
+        return { valid: true, phone };
       } else {
         // Update attempts count
         this.otpStore.set(phone, otpData);
-        this.logger.debug(`Invalid OTP attempt for phone: ${phone.substring(0, 5)}***`);
-        return false;
+        this.logger.debug(`Invalid OTP attempt for phone: ${phone.substring(0, 5)}*** (${attemptsRemaining} attempts remaining)`);
+        return { 
+          valid: false, 
+          phone, 
+          attemptsRemaining: Math.max(0, attemptsRemaining) 
+        };
       }
     } catch (error) {
       this.logger.error(`Error verifying OTP: ${error.message}`);
       this.otpStore.set(phone, otpData);
-      return false;
+      return { valid: false, phone, attemptsRemaining };
     }
+  }
+
+  /**
+   * Verify OTP code for a phone number (legacy method)
+   * @returns true if valid, false otherwise
+   */
+  async verifyOtp(phone: string, otpCode: string): Promise<boolean> {
+    const result = await this.verifyOtpBySessionId(
+      this.getSessionId(phone) || '',
+      otpCode
+    );
+    return result.valid && result.phone === phone;
   }
 
   /**
@@ -212,6 +251,7 @@ export class OtpCacheService {
       const sessionExpiresAt = new Date(data.createdAt.getTime() + this.otpSessionExpiresIn * 1000);
       if (sessionExpiresAt < now) {
         this.otpStore.delete(phone);
+        this.sessionStore.delete(data.sessionId);
         cleanedOtp++;
       }
     }

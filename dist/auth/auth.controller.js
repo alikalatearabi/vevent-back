@@ -18,6 +18,7 @@ const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
 const send_otp_dto_1 = require("./dto/send-otp.dto");
+const verify_otp_dto_1 = require("./dto/verify-otp.dto");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -38,6 +39,9 @@ let AuthController = class AuthController {
     }
     async sendOtp(dto) {
         return this.authService.sendOtp(dto);
+    }
+    async verifyOtp(dto, res) {
+        return this.authService.verifyOtp(dto, res);
     }
 };
 exports.AuthController = AuthController;
@@ -80,6 +84,14 @@ __decorate([
     __metadata("design:paramtypes", [send_otp_dto_1.SendOtpDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "sendOtp", null);
+__decorate([
+    (0, common_1.Post)('verify-otp'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verify_otp_dto_1.VerifyOtpDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyOtp", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('api/v1/auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

@@ -18,6 +18,22 @@ export class EventsController {
     return this.eventsService.findMany(q);
   }
 
+  @Get('current')
+  @ApiOperation({ summary: 'Get current/active event for registration' })
+  @ApiResponse({ status: 200, description: 'Current event data' })
+  @ApiResponse({ status: 404, description: 'No active event found' })
+  async getCurrentEvent() {
+    return this.eventsService.getCurrentEvent();
+  }
+
+  @Get('active')
+  @ApiOperation({ summary: 'Get active event (alias for /current)' })
+  @ApiResponse({ status: 200, description: 'Active event data' })
+  @ApiResponse({ status: 404, description: 'No active event found' })
+  async getActiveEvent() {
+    return this.eventsService.getCurrentEvent();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Event detail' })
   async findById(@Param('id') id: string) {

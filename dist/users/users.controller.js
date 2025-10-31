@@ -19,13 +19,19 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
 const create_favorite_dto_1 = require("./dto/create-favorite.dto");
 const create_recent_dto_1 = require("./dto/create-recent.dto");
+const complete_profile_dto_1 = require("./dto/complete-profile.dto");
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
     }
     async me(req) {
         const user = await this.usersService.findById(req.user.sub);
-        return this.usersService.sanitize(user);
+        const sanitized = this.usersService.sanitize(user);
+        const statusFlags = await this.usersService.getUserStatusFlags(req.user.sub);
+        return {
+            ...sanitized,
+            ...statusFlags,
+        };
     }
     async listFavorites(req) {
         return this.usersService.listFavorites(req.user.sub);
@@ -41,6 +47,12 @@ let UsersController = class UsersController {
     }
     async getUserEvents(req) {
         return this.usersService.getUserEvents(req.user.sub);
+    }
+    async completeProfile(req, dto) {
+        return this.usersService.completeProfile(req.user.sub, dto);
+    }
+    async completeProfilePost(req, dto) {
+        return this.usersService.completeProfile(req.user.sub, dto);
     }
 };
 exports.UsersController = UsersController;
@@ -110,6 +122,38 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "getUserEvents", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.Put)('me/profile'),
+    (0, swagger_1.ApiOperation)({ summary: 'Complete user profile' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Profile completed successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid input or TOC not accepted' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Email already exists' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, complete_profile_dto_1.CompleteProfileDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "completeProfile", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.Post)('me/complete-profile'),
+    (0, swagger_1.ApiOperation)({ summary: 'Complete user profile (alternative endpoint)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Profile completed successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid input or TOC not accepted' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Email already exists' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, complete_profile_dto_1.CompleteProfileDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "completeProfilePost", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('Users'),
     (0, common_1.Controller)('api/v1/users'),

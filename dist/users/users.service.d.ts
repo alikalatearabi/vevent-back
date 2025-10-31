@@ -5,71 +5,76 @@ export declare class UsersService {
     findById(id: string): Promise<{
         id: string;
         email: string;
-        createdAt: Date;
-        company: string | null;
-        jobTitle: string | null;
-        phone: string;
-        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
+        phone: string;
+        company: string | null;
+        jobTitle: string | null;
+        role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
     }>;
     findByEmail(email: string): Promise<{
         id: string;
         email: string;
-        createdAt: Date;
-        company: string | null;
-        jobTitle: string | null;
-        phone: string;
-        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
+        phone: string;
+        company: string | null;
+        jobTitle: string | null;
+        role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
     }>;
     createUser(data: Prisma.UserCreateInput): Promise<{
         id: string;
         email: string;
-        createdAt: Date;
-        company: string | null;
-        jobTitle: string | null;
-        phone: string;
-        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
+        phone: string;
+        company: string | null;
+        jobTitle: string | null;
+        role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
     }>;
     sanitize(user: User): Promise<Partial<{
         id: string;
         email: string;
-        createdAt: Date;
-        company: string | null;
-        jobTitle: string | null;
-        phone: string;
-        role: import(".prisma/client").$Enums.Role;
         firstname: string;
         lastname: string;
         passwordHash: string;
+        phone: string;
+        company: string | null;
+        jobTitle: string | null;
+        role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
     }>>;
+    getUserStatusFlags(userId: string): Promise<{
+        isProfileComplete: boolean;
+        isEventRegistered: boolean;
+        isPaymentComplete: boolean;
+    }>;
     listFavorites(userId: string): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
+        userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }[]>;
@@ -78,8 +83,8 @@ export declare class UsersService {
         resourceId: string;
     }): Promise<{
         id: string;
-        userId: string;
         createdAt: Date;
+        userId: string;
         resourceType: import(".prisma/client").$Enums.ResourceType;
         resourceId: string;
     }>;
@@ -98,13 +103,13 @@ export declare class UsersService {
             id: string;
             createdAt: Date;
             name: string;
-            description: string;
             title: string;
-            location: string;
+            description: string;
             color: string;
             start: Date;
             end: Date;
             timed: boolean;
+            location: string;
             timezone: string;
             published: boolean;
         }[];
@@ -115,4 +120,33 @@ export declare class UsersService {
         };
     }>;
     private checkResourceExists;
+    completeProfile(userId: string, data: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        company?: string;
+        jobTitle?: string;
+        password: string;
+        toc: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            isProfileComplete: boolean;
+            isEventRegistered: boolean;
+            isPaymentComplete: boolean;
+            id: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            phone: string;
+            company: string;
+            jobTitle: string;
+            role: import(".prisma/client").$Enums.Role;
+            avatarAssetId: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    }>;
 }

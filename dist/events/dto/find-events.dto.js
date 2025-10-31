@@ -72,6 +72,13 @@ __decorate([
 ], FindEventsDto.prototype, "upcoming", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Boolean),
+    (0, class_validator_1.IsBoolean)(),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Filter by published status', example: true }),
+    __metadata("design:type", Boolean)
+], FindEventsDto.prototype, "published", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, swagger_1.ApiPropertyOptional)({ description: 'Timezone string (IANA) - optional' }),
     __metadata("design:type", String)

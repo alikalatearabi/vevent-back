@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -44,6 +44,12 @@ export class FindEventsDto {
   @IsString()
   @ApiPropertyOptional({ description: 'If true, return only upcoming events' })
   upcoming?: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  @ApiPropertyOptional({ description: 'Filter by published status', example: true })
+  published?: boolean;
 
   @IsOptional()
   @IsString()

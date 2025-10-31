@@ -1,4 +1,4 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 
@@ -13,7 +13,13 @@ export class EventsService {
     const limit = Math.min(opts.limit || 20, 200);
     const skip = (page - 1) * limit;
 
-    const where: any = { deletedAt: null, published: true };
+    const where: any = { deletedAt: null };
+    // Handle published filter - default to true if not specified
+    if (opts.published !== undefined) {
+      where.published = opts.published;
+    } else {
+      where.published = true; // Default to true if not specified
+    }
     if (opts.exhibitorId) where.exhibitorId = opts.exhibitorId;
     if (opts.q) {
       where.AND = where.AND || [];
@@ -185,5 +191,153 @@ export class EventsService {
       });
       return at;
     });
+  }
+
+  /**
+   * Get current/active event for registration page
+   * Returns the most recent published event or a specific event ID from env
+   */
+  async getCurrentEvent() {
+    // Try to get event ID from environment variable first
+    const specificEventId = process.env.CURRENT_EVENT_ID;
+    
+    let event;
+    if (specificEventId) {
+      // Get specific event by ID
+      event = await this.prisma.event.findUnique({
+        where: { id: specificEventId },
+        include: {
+          assets: {
+            where: { role: 'cover' },
+            include: { asset: true },
+          },
+          tags: {
+            include: { tag: true },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+              company: true,
+            },
+          },
+        },
+      });
+    } else {
+      // Get most recent published event
+      event = await this.prisma.event.findFirst({
+        where: {
+          deletedAt: null,
+          published: true,
+        },
+        include: {
+          assets: {
+            where: { role: 'cover' },
+            include: { asset: true },
+          },
+          tags: {
+            include: { tag: true },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+              company: true,
+            },
+          },
+        },
+        orderBy: {
+          start: 'desc',
+        },
+      });
+    }
+
+    if (!event) {
+      throw new NotFoundException({
+        success: false,
+        message: 'رویداد فعالی یافت نشد',
+        error: 'NO_ACTIVE_EVENT',
+      });
+    }
+
+    // Get registration count
+    const currentRegistrations = await this.prisma.attendee.count({
+      where: { eventId: event.id },
+    });
+
+    // Configuration from environment variables
+    const defaultPrice = parseFloat(process.env.DEFAULT_EVENT_PRICE || '150000');
+    const currency = process.env.PAYMENT_CURRENCY || 'IRR';
+    const capacity = parseInt(process.env.DEFAULT_EVENT_CAPACITY || '1000');
+    
+    // Default features
+    const defaultFeatures = [
+      'دسترسی به تمام سخنرانی‌ها',
+      'شرکت در کارگاه‌های تخصصی',
+      'دسترسی به غرفه‌های نمایشگاه',
+      'فرصت‌های شبکه‌سازی',
+      'دریافت گواهی شرکت',
+    ];
+    const features = process.env.EVENT_FEATURES 
+      ? JSON.parse(process.env.EVENT_FEATURES)
+      : defaultFeatures;
+
+    // Get image URL from assets
+    const coverAsset = event.assets?.find(a => a.role === 'cover');
+    const imageUrl = coverAsset?.asset?.url || null;
+
+    // Get organizer name
+    const organizer = event.createdBy
+      ? `${event.createdBy.firstname} ${event.createdBy.lastname}`.trim()
+      : null;
+
+    // Get category from tags (use first tag as category)
+    const category = event.tags?.length > 0 ? event.tags[0].tag.name : null;
+
+    // Calculate registration status
+    const now = new Date();
+    const registrationStart = process.env.REGISTRATION_START_DATE 
+      ? new Date(process.env.REGISTRATION_START_DATE)
+      : new Date(event.createdAt); // Default to event creation date
+    
+    const registrationEnd = process.env.REGISTRATION_END_DATE 
+      ? new Date(process.env.REGISTRATION_END_DATE)
+      : new Date(event.start.getTime() - 24 * 60 * 60 * 1000); // Default to 1 day before event start
+    
+    const registrationOpen = now >= registrationStart && now <= registrationEnd;
+
+    // Check if event is active (not started yet or currently ongoing)
+    const isActive = now <= event.end;
+
+    // Format response
+    return {
+      success: true,
+      data: {
+        id: event.id,
+        name: event.name,
+        title: event.title,
+        description: event.description || null,
+        start: event.start.toISOString(),
+        end: event.end.toISOString(),
+        location: event.location || null,
+        timezone: event.timezone || 'Asia/Tehran',
+        price: defaultPrice,
+        currency: currency,
+        features: features,
+        published: event.published,
+        isActive: isActive,
+        registrationOpen: registrationOpen,
+        registrationStart: registrationStart.toISOString(),
+        registrationEnd: registrationEnd.toISOString(),
+        capacity: capacity,
+        currentRegistrations: currentRegistrations,
+        imageUrl: imageUrl,
+        organizer: organizer,
+        category: category,
+        tags: event.tags?.map(t => t.tag.name) || [],
+      },
+    };
   }
 }

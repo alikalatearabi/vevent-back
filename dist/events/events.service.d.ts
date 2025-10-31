@@ -185,4 +185,31 @@ export declare class EventsService {
         showEmail: boolean;
         showPhone: boolean;
     }>;
+    getCurrentEvent(): Promise<{
+        success: boolean;
+        data: {
+            id: any;
+            name: any;
+            title: any;
+            description: any;
+            start: any;
+            end: any;
+            location: any;
+            timezone: any;
+            price: number;
+            currency: string;
+            features: any;
+            published: any;
+            isActive: boolean;
+            registrationOpen: boolean;
+            registrationStart: string;
+            registrationEnd: string;
+            capacity: number;
+            currentRegistrations: number;
+            imageUrl: any;
+            organizer: string;
+            category: any;
+            tags: any;
+        };
+    }>;
 }

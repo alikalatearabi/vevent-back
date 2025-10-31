@@ -32,6 +32,7 @@ model User {
   recents       Recent[]
   refreshTokens RefreshToken[]
   avatarAsset   Asset?         @relation("AssetUserAvatar", fields: [avatarAssetId], references: [id])
+  payments      Payment[]
 }
 
 model Event {
@@ -54,6 +55,7 @@ model Event {
   assets             AssetOnEvent[]
   attendees          Attendee[]
   connectionRequests ConnectionRequest[]
+  payments          Payment[]
   createdBy          User?               @relation("EventCreator", fields: [createdById], references: [id])
   exhibitor          Exhibitor?          @relation(fields: [exhibitorId], references: [id])
   speakers           EventSpeaker[]
@@ -358,8 +360,41 @@ enum AttendeeRole {
   MODERATOR
 }
 
+model Payment {
+  id            String       @id @default(uuid())
+  userId        String
+  eventId       String
+  attendeeId    String?
+  amount        Decimal      @db.Decimal(12, 2)
+  currency      String       @default("IRR")
+  status        PaymentStatus @default(PENDING)
+  gateway       String?      // e.g., "zarinpal", "saman", etc.
+  authority     String?      // Gateway transaction ID
+  refId         String?      // Gateway reference ID
+  paymentUrl    String?      // Gateway payment URL
+  metadata      Json?
+  paidAt        DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event         Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@index([authority])
+  @@unique([userId, eventId])
+}
+
 enum ConnectionStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

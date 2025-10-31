@@ -1,9 +1,10 @@
-import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { CreateRecentDto } from './dto/create-recent.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 
 @ApiTags('Users')
 @Controller('api/v1/users')
@@ -18,7 +19,12 @@ export class UsersController {
   @Get('me')
   async me(@Req() req: any) {
     const user = await this.usersService.findById(req.user.sub);
-    return this.usersService.sanitize(user);
+    const sanitized = this.usersService.sanitize(user);
+    const statusFlags = await this.usersService.getUserStatusFlags(req.user.sub);
+    return {
+      ...sanitized,
+      ...statusFlags,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -60,5 +66,31 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User events calendar' })
   async getUserEvents(@Req() req: any) {
     return this.usersService.getUserEvents(req.user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Put('me/profile')
+  @ApiOperation({ summary: 'Complete user profile' })
+  @ApiResponse({ status: 200, description: 'Profile completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input or TOC not accepted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  async completeProfile(@Req() req: any, @Body() dto: CompleteProfileDto) {
+    return this.usersService.completeProfile(req.user.sub, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Post('me/complete-profile')
+  @ApiOperation({ summary: 'Complete user profile (alternative endpoint)' })
+  @ApiResponse({ status: 200, description: 'Profile completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input or TOC not accepted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  async completeProfilePost(@Req() req: any, @Body() dto: CompleteProfileDto) {
+    return this.usersService.completeProfile(req.user.sub, dto);
   }
 }

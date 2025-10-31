@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import { RefreshTokenService } from './refresh-token.service';
 import { RegisterDto } from './dto/register.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
 
@@ -195,6 +196,164 @@ export class AuthService {
       sessionId,
       message: 'کد تایید به شماره شما ارسال شد',
       expiresIn,
+    };
+  }
+
+  /**
+   * Verify OTP and authenticate/create user
+   * @param dto VerifyOtpDto containing sessionId and OTP code
+   * @param res Express response for setting cookies
+   * @returns Success response with user data and access token
+   */
+  async verifyOtp(dto: VerifyOtpDto, res: any) {
+    const { sessionId, otp } = dto;
+
+    // 1. Validate sessionId and OTP (already validated by DTO decorators)
+
+    // 2. Retrieve and verify OTP data from cache
+    const verificationResult = await this.otpCacheService.verifyOtpBySessionId(sessionId, otp);
+
+    if (!verificationResult.valid) {
+      if (!verificationResult.phone) {
+        // Session not found or expired
+        throw new HttpException(
+          {
+            success: false,
+            message: 'شناسه نشست یافت نشد یا منقضی شده است',
+            error: 'SESSION_NOT_FOUND',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Invalid OTP - check if attempts exceeded
+      if (verificationResult.attemptsRemaining !== undefined && verificationResult.attemptsRemaining <= 0) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'تعداد تلاش‌های مجاز برای تایید کد تمام شده است',
+            error: 'MAX_ATTEMPTS_EXCEEDED',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      // Invalid OTP - return attempts remaining
+      throw new BadRequestException({
+        success: false,
+        message: 'کد تایید اشتباه است',
+        error: 'INVALID_OTP',
+        attemptsRemaining: verificationResult.attemptsRemaining || 0,
+      });
+    }
+
+    const phone = verificationResult.phone!;
+
+    // 3. Check if user exists with this phone number
+    let user = await this.prisma.user.findFirst({
+      where: { phone },
+      select: {
+        id: true,
+        firstname: true,
+        lastname: true,
+        email: true,
+        phone: true,
+        company: true,
+        jobTitle: true,
+        role: true,
+        avatarAssetId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
+    });
+
+    // 4. If user doesn't exist, create a new user (optimized - no email check needed)
+    if (!user) {
+      const timestamp = Date.now();
+      const placeholderEmail = `user_${phone}_${timestamp}@vevent.temp`;
+      const tempPassword = `temp_${phone}_${timestamp}`;
+      
+      // Hash password once
+      const passwordHash = await argon2.hash(tempPassword);
+      
+      // Create user directly (timestamp ensures unique email)
+      user = await this.prisma.user.create({
+        data: {
+          firstname: 'کاربر',
+          lastname: 'جدید',
+          email: placeholderEmail,
+          passwordHash,
+          phone,
+          role: 'USER',
+          isActive: true,
+        },
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+          phone: true,
+          company: true,
+          jobTitle: true,
+          role: true,
+          avatarAssetId: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
+      });
+    }
+
+    // 5. Check user status flags (run queries in parallel for better performance)
+    const isProfileComplete = !!(
+      user.firstname && 
+      user.lastname && 
+      user.email && 
+      !user.email.includes('@vevent.temp') && 
+      user.company && 
+      user.jobTitle
+    );
+    
+    // Run status queries in parallel
+    const [eventRegistrations, completedPayments] = await Promise.all([
+      this.prisma.attendee.count({
+        where: { userId: user.id },
+      }),
+      this.prisma.payment.count({
+        where: { 
+          userId: user.id,
+          status: 'COMPLETED',
+        },
+      }),
+    ]);
+
+    const isEventRegistered = eventRegistrations > 0;
+    const isPaymentComplete = completedPayments > 0;
+
+    // 6. Generate authentication tokens
+    const accessToken = await this.createAccessToken(user.id);
+    const { raw } = await this.refreshTokenService.create(user.id, this.getRefreshExpiresSeconds());
+
+    // Set refresh token cookie
+    res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
+
+    // 7. Return success response
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        email: user.email,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        isProfileComplete,
+        isEventRegistered,
+        isPaymentComplete,
+      },
+      accessToken,
     };
   }
 }
