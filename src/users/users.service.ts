@@ -57,13 +57,17 @@ export class UsersService {
     }
 
     // Check if profile is complete
+    // Required: firstname, lastname, email (not temp)
+    // Optional: company, jobTitle (if provided, must be non-empty strings)
     const isProfileComplete = !!(
       user.firstname &&
+      user.firstname.trim().length > 0 &&
       user.lastname &&
+      user.lastname.trim().length > 0 &&
       user.email &&
-      !user.email.includes('@vevent.temp') &&
-      user.company &&
-      user.jobTitle
+      user.email.trim().length > 0 &&
+      !user.email.includes('@vevent.temp')
+      // Note: company and jobTitle are optional - profile can be complete without them
     );
 
     // Check if user has registered for any events
@@ -271,14 +275,18 @@ export class UsersService {
     const passwordHash = await argon2.hash(data.password);
 
     // Update user profile
+    // Trim and validate optional fields - if empty string, set to null
+    const company = data.company?.trim() || null;
+    const jobTitle = data.jobTitle?.trim() || null;
+    
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        firstname: data.firstName,
-        lastname: data.lastName,
-        email: data.email,
-        company: data.company || null,
-        jobTitle: data.jobTitle || null,
+        firstname: data.firstName.trim(),
+        lastname: data.lastName.trim(),
+        email: data.email.trim(),
+        company,
+        jobTitle,
         passwordHash,
       },
       select: {

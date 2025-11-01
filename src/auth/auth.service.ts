@@ -308,13 +308,17 @@ export class AuthService {
     }
 
     // 5. Check user status flags (run queries in parallel for better performance)
+    // Required: firstname, lastname, email (not temp)
+    // Optional: company, jobTitle (if provided, must be non-empty strings)
     const isProfileComplete = !!(
-      user.firstname && 
-      user.lastname && 
-      user.email && 
-      !user.email.includes('@vevent.temp') && 
-      user.company && 
-      user.jobTitle
+      user.firstname &&
+      user.firstname.trim().length > 0 &&
+      user.lastname &&
+      user.lastname.trim().length > 0 &&
+      user.email &&
+      user.email.trim().length > 0 &&
+      !user.email.includes('@vevent.temp')
+      // Note: company and jobTitle are optional - profile can be complete without them
     );
     
     // Run status queries in parallel
