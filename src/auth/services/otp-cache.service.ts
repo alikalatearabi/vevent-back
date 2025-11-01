@@ -155,7 +155,7 @@ export class OtpCacheService {
     }
 
     if (otpData.attempts >= this.otpMaxAttempts) {
-      this.logger.debug(`Max attempts exceeded for phone: ${phone.substring(0, 5)}***`);
+      this.logger.debug(`Max attempts exceeded for phone: ${phone.substring(0, 5)}th***`);
       this.otpStore.delete(phone);
       this.sessionStore.delete(sessionId);
       return { valid: false };
