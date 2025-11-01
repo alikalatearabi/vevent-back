@@ -22,7 +22,17 @@ export class MinioService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    await this.createBucketIfNotExists();
+    // Try to create bucket, but don't fail startup if MinIO is unavailable
+    // This allows the app to start even if MinIO is temporarily down
+    try {
+      await this.createBucketIfNotExists();
+    } catch (error) {
+      this.logger.warn(
+        `MinIO bucket initialization failed. The service will retry on first use. Error: ${error.message}`
+      );
+      // Don't throw - allow the app to start without MinIO
+      // MinIO operations will fail gracefully when attempted
+    }
   }
 
   private async createBucketIfNotExists() {

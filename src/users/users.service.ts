@@ -1,10 +1,14 @@
 import { Inject, Injectable, BadRequestException, ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaClient, User, Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { AssetService } from '../common/services/asset.service';
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject('PRISMA') private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject('PRISMA') private readonly prisma: PrismaClient,
+    private readonly assetService: AssetService,
+  ) {}
 
   async findById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
@@ -302,6 +306,80 @@ export class UsersService {
       data: {
         ...updatedUser,
         ...statusFlags,
+      },
+    };
+  }
+
+  /**
+   * Upload user avatar image
+   */
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    // Validate image file
+    try {
+      this.assetService.validateImageFile(file);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+
+    // Get current user to check for existing avatar
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarAssetId: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        success: false,
+        message: 'کاربر یافت نشد',
+        error: 'USER_NOT_FOUND',
+      });
+    }
+
+    // Create new asset
+    const asset = await this.assetService.createAsset(
+      file,
+      `users/${userId}/avatar`,
+      userId,
+      { userId },
+    );
+
+    // Delete old avatar if exists
+    if (user.avatarAssetId) {
+      try {
+        await this.assetService.deleteAsset(user.avatarAssetId);
+      } catch (error) {
+        // Log error but don't fail the upload
+        console.error('Error deleting old avatar:', error);
+      }
+    }
+
+    // Update user's avatarAssetId
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarAssetId: asset.id },
+      select: {
+        id: true,
+        firstname: true,
+        lastname: true,
+        email: true,
+        phone: true,
+        avatarAssetId: true,
+        avatarAsset: {
+          select: {
+            id: true,
+            url: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'آواتار با موفقیت آپلود شد',
+      data: {
+        avatarAssetId: updatedUser.avatarAssetId,
+        avatarUrl: updatedUser.avatarAsset?.url || null,
       },
     };
   }

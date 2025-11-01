@@ -1,7 +1,8 @@
-import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { CreateRecentDto } from './dto/create-recent.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
@@ -92,5 +93,25 @@ export class UsersController {
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async completeProfilePost(@Req() req: any, @Body() dto: CompleteProfileDto) {
     return this.usersService.completeProfile(req.user.sub, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Post('me/avatar')
+  @ApiOperation({ summary: 'Upload user avatar image' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'No file uploaded or invalid file type' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @UseInterceptors(FileInterceptor('avatar'))
+  async uploadAvatar(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.usersService.uploadAvatar(req.user.sub, file);
   }
 }
