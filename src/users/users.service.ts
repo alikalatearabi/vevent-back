@@ -8,10 +8,21 @@ export class UsersService {
   constructor(
     @Inject('PRISMA') private readonly prisma: PrismaClient,
     private readonly assetService: AssetService,
-  ) {}
+  ) { }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        avatarAsset: {
+          select: {
+            id: true,
+            url: true,
+            type: true,
+          },
+        },
+      },
+    });
   }
 
   async findByEmail(email: string) {
@@ -122,9 +133,9 @@ export class UsersService {
   async getUserEvents(userId: string) {
     // Get events user created
     const createdEvents = await this.prisma.event.findMany({
-      where: { 
+      where: {
         createdById: userId,
-        deletedAt: null 
+        deletedAt: null
       },
       select: {
         id: true,
@@ -145,7 +156,7 @@ export class UsersService {
 
     // Get events user is registered for as attendee
     const registeredEvents = await this.prisma.attendee.findMany({
-      where: { 
+      where: {
         userId: userId,
         event: {
           deletedAt: null
@@ -169,7 +180,7 @@ export class UsersService {
           }
         }
       },
-      orderBy: { 
+      orderBy: {
         event: { start: 'asc' }
       }
     });
@@ -189,7 +200,7 @@ export class UsersService {
 
     // Merge and remove duplicates (in case user created and also registered)
     const allEvents = [...created, ...registered];
-    const uniqueEvents = allEvents.filter((event, index, self) => 
+    const uniqueEvents = allEvents.filter((event, index, self) =>
       index === self.findIndex(e => e.id === event.id)
     );
 
@@ -223,20 +234,19 @@ export class UsersService {
     }
   }
 
-  /**
-   * Complete user profile
-   * Updates user profile information and sets password
-   */
-  async completeProfile(userId: string, data: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    company?: string;
-    jobTitle?: string;
-    password: string;
-    toc: boolean;
-  }) {
-    // Validate terms of conditions acceptance
+  async completeProfile(
+    userId: string,
+    data: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      company?: string;
+      jobTitle?: string;
+      password?: string; // <-- make optional
+      toc: boolean;
+    },
+  ) {
+    // ✅ 1. Validate TOC
     if (!data.toc) {
       throw new BadRequestException({
         success: false,
@@ -245,8 +255,12 @@ export class UsersService {
       });
     }
 
-    // Check if user exists
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    // ✅ 2. Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true },
+    });
+
     if (!user) {
       throw new NotFoundException({
         success: false,
@@ -255,11 +269,11 @@ export class UsersService {
       });
     }
 
-    // Check if email is already taken by another user
+    // ✅ 3. Check if email already exists for another user
     const existingEmail = await this.prisma.user.findFirst({
       where: {
         email: data.email,
-        id: { not: userId }, // Exclude current user
+        id: { not: userId },
       },
     });
 
@@ -271,24 +285,51 @@ export class UsersService {
       });
     }
 
-    // Hash password
-    const passwordHash = await argon2.hash(data.password);
+    // ✅ 4. Handle password logic
+    let passwordHash: string | undefined;
 
-    // Update user profile
-    // Trim and validate optional fields - if empty string, set to null
+    if (!user.passwordHash) {
+      if (!data.password || data.password.trim().length < 6) {
+        throw new BadRequestException({
+          success: false,
+          message: 'رمز عبور الزامی است و باید حداقل 6 کاراکتر باشد',
+          error: 'PASSWORD_REQUIRED',
+        });
+      }
+      passwordHash = await argon2.hash(data.password.trim());
+    } else if (data.password) {
+      // user already has password but wants to update it
+      if (data.password.trim().length < 6) {
+        throw new BadRequestException({
+          success: false,
+          message: 'رمز عبور باید حداقل 6 کاراکتر باشد',
+          error: 'PASSWORD_TOO_SHORT',
+        });
+      }
+      passwordHash = await argon2.hash(data.password.trim());
+    }
+
+    // ✅ 5. Clean optional fields
     const company = data.company?.trim() || null;
     const jobTitle = data.jobTitle?.trim() || null;
-    
+
+    // ✅ 6. Build update data dynamically
+    const updateData: any = {
+      firstname: data.firstName.trim(),
+      lastname: data.lastName.trim(),
+      email: data.email.trim(),
+      company,
+      jobTitle,
+    };
+
+    if (passwordHash) {
+      updateData.passwordHash = passwordHash;
+    }
+
+    // ✅ 7. Update user
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        firstname: data.firstName.trim(),
-        lastname: data.lastName.trim(),
-        email: data.email.trim(),
-        company,
-        jobTitle,
-        passwordHash,
-      },
+      data: updateData,
       select: {
         id: true,
         firstname: true,
@@ -305,18 +346,20 @@ export class UsersService {
       },
     });
 
-    // Get updated status flags
+    // ✅ 8. Get updated status flags
     const statusFlags = await this.getUserStatusFlags(userId);
 
+    // ✅ 9. Return response
     return {
       success: true,
-      message: 'اطلاعات پروفایل با موفقیت تکمیل شد',
+      message: 'اطلاعات پروفایل با موفقیت به‌روزرسانی شد',
       data: {
         ...updatedUser,
         ...statusFlags,
       },
     };
   }
+
 
   /**
    * Upload user avatar image

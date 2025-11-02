@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
@@ -20,12 +20,11 @@ export class UsersController {
   @Get('me')
   async me(@Req() req: any) {
     const user = await this.usersService.findById(req.user.sub);
-    const sanitized = this.usersService.sanitize(user);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     const statusFlags = await this.usersService.getUserStatusFlags(req.user.sub);
-    return {
-      ...sanitized,
-      ...statusFlags,
-    };
+    return { ...user, ...statusFlags };
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEmail, MinLength, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, MinLength, IsBoolean, IsOptional, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CompleteProfileDto {
@@ -27,15 +27,15 @@ export class CompleteProfileDto {
   @ApiPropertyOptional({ description: 'Job title', example: 'عنوان شغلی' })
   jobTitle?: string;
 
-  @IsNotEmpty({ message: 'رمز عبور الزامی است' })
+  @IsOptional()
+  @ValidateIf((o) => o.password !== undefined && o.password !== null && o.password !== '')
   @IsString({ message: 'رمز عبور باید یک رشته باشد' })
   @MinLength(6, { message: 'رمز عبور باید حداقل 6 کاراکتر باشد' })
-  @ApiProperty({ description: 'User password (min 6 characters)', example: 'password123' })
-  password: string;
+  @ApiPropertyOptional({ description: 'User password (min 6 characters, optional if user already has password)', example: 'password123' })
+  password?: string;
 
   @IsNotEmpty({ message: 'پذیرش قوانین و مقررات الزامی است' })
   @IsBoolean({ message: 'پذیرش قوانین باید true باشد' })
   @ApiProperty({ description: 'Terms and conditions acceptance (must be true)', example: true })
   toc: boolean;
 }
-
