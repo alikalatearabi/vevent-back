@@ -4,10 +4,33 @@ import axios from 'axios';
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
-  private readonly mockMode: boolean = process.env.SMS_MOCK !== 'false'; // Default to true unless explicitly disabled
-  private readonly apiKey: string = process.env.SMS_IR_API_KEY || '';
-  private readonly templateId: number = parseInt(process.env.SMS_IR_TEMPLATE_ID || '0');
+  private readonly mockMode: boolean;
+  private readonly apiKey: string;
+  private readonly templateId: number;
   private readonly apiUrl: string = 'https://api.sms.ir/v1/send/verify';
+
+  constructor() {
+    // Debug: Log environment variables to diagnose issues
+    const smsMock = process.env.SMS_MOCK;
+    const apiKey = process.env.SMS_IR_API_KEY;
+    const templateId = process.env.SMS_IR_TEMPLATE_ID;
+    
+    this.logger.log(`[SMS Service Init] SMS_MOCK="${smsMock}" (type: ${typeof smsMock}, length: ${smsMock?.length})`);
+    this.logger.log(`[SMS Service Init] SMS_IR_API_KEY="${apiKey ? apiKey.substring(0, 10) + '...' : 'NOT SET'}" (exists: ${!!apiKey})`);
+    this.logger.log(`[SMS Service Init] SMS_IR_TEMPLATE_ID="${templateId}" (exists: ${!!templateId})`);
+    
+    this.mockMode = smsMock !== 'false';
+    this.apiKey = apiKey || '';
+    this.templateId = parseInt(templateId || '0');
+    
+    this.logger.log(`[SMS Service Init] Final: mockMode=${this.mockMode}, apiKey exists=${!!this.apiKey}, templateId=${this.templateId}`);
+    
+    if (this.mockMode) {
+      this.logger.warn('[SMS Service] Running in MOCK MODE - SMS will not be sent to real phone numbers');
+    } else {
+      this.logger.log('[SMS Service] Running in REAL MODE - SMS will be sent via SMS.ir API');
+    }
+  }
 
   /**
    * Send OTP code via SMS
@@ -16,10 +39,13 @@ export class SmsService {
    * @returns Promise<boolean> true if sent successfully, false otherwise
    */
   async sendOtp(phone: string, code: string): Promise<boolean> {
+    this.logger.debug(`[sendOtp] Called with phone: ${phone}, mockMode: ${this.mockMode}`);
     if (this.mockMode) {
+      this.logger.debug(`[sendOtp] Using mock SMS service`);
       return this.sendMockSms(phone, code);
     }
 
+    this.logger.debug(`[sendOtp] Using real SMS service`);
     return this.sendRealSms(phone, code);
   }
 

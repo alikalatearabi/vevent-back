@@ -5,6 +5,12 @@ import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Debug: Log SMS-related environment variables at startup
+  console.log('[Bootstrap] SMS Environment Variables:');
+  console.log(`  SMS_MOCK="${process.env.SMS_MOCK}" (type: ${typeof process.env.SMS_MOCK}, length: ${process.env.SMS_MOCK?.length})`);
+  console.log(`  SMS_IR_API_KEY="${process.env.SMS_IR_API_KEY ? process.env.SMS_IR_API_KEY.substring(0, 10) + '...' : 'NOT SET'}" (exists: ${!!process.env.SMS_IR_API_KEY})`);
+  console.log(`  SMS_IR_TEMPLATE_ID="${process.env.SMS_IR_TEMPLATE_ID}" (exists: ${!!process.env.SMS_IR_TEMPLATE_ID})`);
+  
   const app = await NestFactory.create(AppModule);
   
   app.useGlobalPipes(
