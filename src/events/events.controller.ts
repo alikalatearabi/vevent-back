@@ -34,6 +34,14 @@ export class EventsController {
     return this.eventsService.getCurrentEvent();
   }
 
+  @Get(':id/speakers')
+  @ApiOperation({ summary: 'Get all speakers for an event' })
+  @ApiResponse({ status: 200, description: 'List of speakers for the event' })
+  @ApiResponse({ status: 404, description: 'Event not found' })
+  async getEventSpeakers(@Param('id') id: string) {
+    return this.eventsService.getEventSpeakers(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Event detail' })
   async findById(@Param('id') id: string) {

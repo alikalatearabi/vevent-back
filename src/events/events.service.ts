@@ -78,6 +78,93 @@ export class EventsService {
     return e;
   }
 
+  async getEventSpeakers(eventId: string) {
+    // Check if event exists
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { 
+        id: true,
+        name: true,
+        start: true,
+        location: true
+      }
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    // If this is the main event (hr-analytics-event-2025), get speakers from all session events on the same day
+    let eventIdsToQuery = [eventId];
+    
+    if (event.name === 'hr-analytics-event-2025') {
+      // Get all events on the same day and location (session events)
+      const sameDayEvents = await this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          start: {
+            gte: new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate()),
+            lt: new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate() + 1)
+          },
+          location: event.location
+        },
+        select: { id: true }
+      });
+      
+      eventIdsToQuery = sameDayEvents.map(e => e.id);
+    }
+
+    // Get all speakers from the event(s)
+    const eventSpeakers = await this.prisma.eventSpeaker.findMany({
+      where: { 
+        eventId: { in: eventIdsToQuery }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstname: true,
+            lastname: true,
+            email: true,
+            phone: true,
+            company: true,
+            jobTitle: true
+          }
+        },
+        event: {
+          select: {
+            id: true,
+            name: true,
+            title: true
+          }
+        }
+      },
+      orderBy: { order: 'asc' }
+    });
+
+    // Remove duplicates (same speaker in multiple sessions) and keep unique by user ID
+    const uniqueSpeakers = new Map();
+    eventSpeakers.forEach(es => {
+      if (!uniqueSpeakers.has(es.user.id)) {
+        uniqueSpeakers.set(es.user.id, es);
+      }
+    });
+
+    return {
+      data: Array.from(uniqueSpeakers.values()).map(es => ({
+        id: es.user.id,
+        firstName: es.user.firstname,
+        lastName: es.user.lastname,
+        email: es.user.email,
+        phone: es.user.phone,
+        company: es.user.company,
+        jobTitle: es.user.jobTitle,
+        role: es.role || 'SPEAKER',
+        order: es.order || 0
+      }))
+    };
+  }
+
   async create(data: any, userId?: string) {
     // validate
     if (new Date(data.start) >= new Date(data.end)) throw new BadRequestException('start must be before end');
@@ -225,11 +312,12 @@ export class EventsService {
         },
       });
     } else {
-      // Get most recent published event
+      // First try to get main HR Analytics event (the main event representing the whole day)
       event = await this.prisma.event.findFirst({
         where: {
           deletedAt: null,
           published: true,
+          name: 'hr-analytics-event-2025',
         },
         include: {
           assets: {
@@ -248,10 +336,65 @@ export class EventsService {
             },
           },
         },
-        orderBy: {
-          start: 'desc',
-        },
       });
+
+      // If no main event, try to get opening ceremony event
+      if (!event) {
+        event = await this.prisma.event.findFirst({
+          where: {
+            deletedAt: null,
+            published: true,
+            name: 'opening-ceremony',
+          },
+          include: {
+            assets: {
+              where: { role: 'cover' },
+              include: { asset: true },
+            },
+            tags: {
+              include: { tag: true },
+            },
+            createdBy: {
+              select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                company: true,
+              },
+            },
+          },
+        });
+      }
+
+      // If still no event, get the earliest published event (first session of the day)
+      if (!event) {
+        event = await this.prisma.event.findFirst({
+          where: {
+            deletedAt: null,
+            published: true,
+          },
+          include: {
+            assets: {
+              where: { role: 'cover' },
+              include: { asset: true },
+            },
+            tags: {
+              include: { tag: true },
+            },
+            createdBy: {
+              select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                company: true,
+              },
+            },
+          },
+          orderBy: {
+            start: 'asc',
+          },
+        });
+      }
     }
 
     if (!event) {
