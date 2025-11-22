@@ -29,7 +29,11 @@ class AppController {
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ 
+      isGlobal: true,
+      envFilePath: ['.env', '.env.local', '.env.production'],
+      expandVariables: true,
+    }),
     CommonModule,
     AuthModule, 
     UsersModule, 

@@ -39,6 +39,12 @@ export class SmsService {
    * @returns Promise<boolean> true if sent successfully, false otherwise
    */
   async sendOtp(phone: string, code: string): Promise<boolean> {
+    // Debug: Check environment variables at runtime
+    const smsMockEnv = process.env.SMS_MOCK;
+    this.logger.log(`[sendOtp DEBUG] SMS_MOCK env="${smsMockEnv}" (type: ${typeof smsMockEnv}, length: ${smsMockEnv?.length})`);
+    this.logger.log(`[sendOtp DEBUG] SMS_MOCK !== 'false' = ${smsMockEnv !== 'false'}`);
+    this.logger.log(`[sendOtp DEBUG] Current mockMode=${this.mockMode}, apiKey exists=${!!this.apiKey}, templateId=${this.templateId}`);
+    
     this.logger.debug(`[sendOtp] Called with phone: ${phone}, mockMode: ${this.mockMode}`);
     if (this.mockMode) {
       this.logger.debug(`[sendOtp] Using mock SMS service`);
