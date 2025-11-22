@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { Inject } from '@nestjs/common';
+import { UpdateAttendeePrivacyDto } from './dto/update-attendee-privacy.dto';
 
 @Injectable()
 export class AttendeesService {
@@ -97,6 +98,58 @@ export class AttendeesService {
         limit: 50,
         total: total
       }
+    };
+  }
+
+  async updatePrivacySettings(attendeeId: string, userId: string, dto: UpdateAttendeePrivacyDto) {
+    const attendee = await this.prisma.attendee.findUnique({ where: { id: attendeeId } });
+
+    if (!attendee) {
+      throw new NotFoundException('Attendee not found');
+    }
+
+    if (attendee.userId !== userId) {
+      throw new ForbiddenException('You can only update your own privacy settings');
+    }
+
+    const data: Record<string, boolean> = {};
+
+    if (dto.showPhone !== undefined) {
+      data.showPhone = dto.showPhone;
+    }
+    if (dto.showEmail !== undefined) {
+      data.showEmail = dto.showEmail;
+    }
+    if (dto.showCompany !== undefined) {
+      data.showCompany = dto.showCompany;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No privacy settings provided');
+    }
+
+    const updated = await this.prisma.attendee.update({
+      where: { id: attendeeId },
+      data,
+      select: {
+        id: true,
+        eventId: true,
+        role: true,
+        showPhone: true,
+        showEmail: true,
+        showCompany: true,
+      }
+    });
+
+    return {
+      attendeeId: updated.id,
+      eventId: updated.eventId,
+      role: updated.role,
+      privacy: {
+        showPhone: updated.showPhone,
+        showEmail: updated.showEmail,
+        showCompany: updated.showCompany,
+      },
     };
   }
 }

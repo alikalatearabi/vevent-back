@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const users_service_1 = require("./users.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
+const platform_express_1 = require("@nestjs/platform-express");
 const create_favorite_dto_1 = require("./dto/create-favorite.dto");
 const create_recent_dto_1 = require("./dto/create-recent.dto");
 const complete_profile_dto_1 = require("./dto/complete-profile.dto");
@@ -26,12 +27,11 @@ let UsersController = class UsersController {
     }
     async me(req) {
         const user = await this.usersService.findById(req.user.sub);
-        const sanitized = this.usersService.sanitize(user);
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
         const statusFlags = await this.usersService.getUserStatusFlags(req.user.sub);
-        return {
-            ...sanitized,
-            ...statusFlags,
-        };
+        return { ...user, ...statusFlags };
     }
     async listFavorites(req) {
         return this.usersService.listFavorites(req.user.sub);
@@ -53,6 +53,12 @@ let UsersController = class UsersController {
     }
     async completeProfilePost(req, dto) {
         return this.usersService.completeProfile(req.user.sub, dto);
+    }
+    async uploadAvatar(req, file) {
+        if (!file) {
+            throw new common_1.BadRequestException('No file uploaded');
+        }
+        return this.usersService.uploadAvatar(req.user.sub, file);
     }
 };
 exports.UsersController = UsersController;
@@ -154,6 +160,23 @@ __decorate([
     __metadata("design:paramtypes", [Object, complete_profile_dto_1.CompleteProfileDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "completeProfilePost", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.Post)('me/avatar'),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload user avatar image' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Avatar uploaded successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'No file uploaded or invalid file type' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('avatar')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "uploadAvatar", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('Users'),
     (0, common_1.Controller)('api/v1/users'),

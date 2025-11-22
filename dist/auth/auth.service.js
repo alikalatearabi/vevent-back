@@ -248,11 +248,12 @@ let AuthService = AuthService_1 = class AuthService {
             });
         }
         const isProfileComplete = !!(user.firstname &&
+            user.firstname.trim().length > 0 &&
             user.lastname &&
+            user.lastname.trim().length > 0 &&
             user.email &&
-            !user.email.includes('@vevent.temp') &&
-            user.company &&
-            user.jobTitle);
+            user.email.trim().length > 0 &&
+            !user.email.includes('@vevent.temp'));
         const [eventRegistrations, completedPayments] = await Promise.all([
             this.prisma.attendee.count({
                 where: { userId: user.id },

@@ -24,7 +24,23 @@ export class UsersController {
       throw new NotFoundException('User not found');
     }
     const statusFlags = await this.usersService.getUserStatusFlags(req.user.sub);
-    return { ...user, ...statusFlags };
+    const { attendees = [], ...userData } = user as any;
+    const attendeePrivacy = attendees.map((attendee: any) => ({
+      attendeeId: attendee.id,
+      eventId: attendee.eventId,
+      role: attendee.role,
+      privacy: {
+        showPhone: attendee.showPhone,
+        showEmail: attendee.showEmail,
+        showCompany: attendee.showCompany,
+      },
+    }));
+
+    return {
+      ...userData,
+      attendeePrivacy,
+      ...statusFlags,
+    };
   }
 
   @UseGuards(JwtAuthGuard)

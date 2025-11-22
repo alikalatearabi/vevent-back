@@ -5,7 +5,15 @@ import { CompleteProfileDto } from './dto/complete-profile.dto';
 export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
-    me(req: any): Promise<Partial<{
+    me(req: any): Promise<{
+        isProfileComplete: boolean;
+        isEventRegistered: boolean;
+        isPaymentComplete: boolean;
+        avatarAsset: {
+            url: string;
+            id: string;
+            type: string;
+        };
         id: string;
         email: string;
         firstname: string;
@@ -20,7 +28,7 @@ export declare class UsersController {
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-    }>>;
+    }>;
     listFavorites(req: any): Promise<{
         id: string;
         createdAt: Date;
@@ -43,6 +51,7 @@ export declare class UsersController {
         data: {
             userRole: string;
             registrationDate: Date;
+            end: Date;
             id: string;
             createdAt: Date;
             name: string;
@@ -50,7 +59,6 @@ export declare class UsersController {
             description: string;
             color: string;
             start: Date;
-            end: Date;
             timed: boolean;
             location: string;
             timezone: string;
@@ -102,6 +110,14 @@ export declare class UsersController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+        };
+    }>;
+    uploadAvatar(req: any, file: Express.Multer.File): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            avatarAssetId: string;
+            avatarUrl: string;
         };
     }>;
 }

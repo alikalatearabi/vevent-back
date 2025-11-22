@@ -19,34 +19,34 @@ export declare class AuthService {
     register(dto: RegisterDto, res: any): Promise<{
         user: {
             id: string;
+            email: string;
             firstname: string;
             lastname: string;
-            email: string;
             role: import(".prisma/client").$Enums.Role;
+            avatarAssetId: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date;
-            avatarAssetId: string;
         };
         accessToken: string;
     }>;
     login(dto: any, res: any): Promise<{
         user: {
             id: string;
+            email: string;
             firstname: string;
             lastname: string;
-            email: string;
             passwordHash: string;
             phone: string;
             company: string | null;
             jobTitle: string | null;
             role: import(".prisma/client").$Enums.Role;
+            avatarAssetId: string | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            avatarAssetId: string | null;
         };
         accessToken: string;
     }>;
@@ -67,19 +67,19 @@ export declare class AuthService {
     };
     validateUserFromJwt(payload: any): Promise<{
         id: string;
+        email: string;
         firstname: string;
         lastname: string;
-        email: string;
         passwordHash: string;
         phone: string;
         company: string | null;
         jobTitle: string | null;
         role: import(".prisma/client").$Enums.Role;
+        avatarAssetId: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        avatarAssetId: string | null;
     }>;
     sendOtp(dto: SendOtpDto): Promise<{
         success: boolean;

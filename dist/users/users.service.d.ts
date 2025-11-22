@@ -1,8 +1,16 @@
 import { PrismaClient, User, Prisma } from '@prisma/client';
+import { AssetService } from '../common/services/asset.service';
 export declare class UsersService {
     private readonly prisma;
-    constructor(prisma: PrismaClient);
+    private readonly assetService;
+    constructor(prisma: PrismaClient, assetService: AssetService);
     findById(id: string): Promise<{
+        avatarAsset: {
+            url: string;
+            id: string;
+            type: string;
+        };
+    } & {
         id: string;
         email: string;
         firstname: string;
@@ -100,6 +108,7 @@ export declare class UsersService {
         data: {
             userRole: string;
             registrationDate: Date;
+            end: Date;
             id: string;
             createdAt: Date;
             name: string;
@@ -107,7 +116,6 @@ export declare class UsersService {
             description: string;
             color: string;
             start: Date;
-            end: Date;
             timed: boolean;
             location: string;
             timezone: string;
@@ -126,7 +134,7 @@ export declare class UsersService {
         email: string;
         company?: string;
         jobTitle?: string;
-        password: string;
+        password?: string;
         toc: boolean;
     }): Promise<{
         success: boolean;
@@ -147,6 +155,14 @@ export declare class UsersService {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+        };
+    }>;
+    uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            avatarAssetId: string;
+            avatarUrl: string;
         };
     }>;
 }

@@ -16,12 +16,25 @@ exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const argon2 = require("argon2");
+const asset_service_1 = require("../common/services/asset.service");
 let UsersService = class UsersService {
-    constructor(prisma) {
+    constructor(prisma, assetService) {
         this.prisma = prisma;
+        this.assetService = assetService;
     }
     async findById(id) {
-        return this.prisma.user.findUnique({ where: { id } });
+        return this.prisma.user.findUnique({
+            where: { id },
+            include: {
+                avatarAsset: {
+                    select: {
+                        id: true,
+                        url: true,
+                        type: true,
+                    },
+                },
+            },
+        });
     }
     async findByEmail(email) {
         return this.prisma.user.findUnique({ where: { email } });
@@ -52,11 +65,12 @@ let UsersService = class UsersService {
             };
         }
         const isProfileComplete = !!(user.firstname &&
+            user.firstname.trim().length > 0 &&
             user.lastname &&
+            user.lastname.trim().length > 0 &&
             user.email &&
-            !user.email.includes('@vevent.temp') &&
-            user.company &&
-            user.jobTitle);
+            user.email.trim().length > 0 &&
+            !user.email.includes('@vevent.temp'));
         const eventRegistrations = await this.prisma.attendee.count({
             where: { userId },
         });
@@ -193,7 +207,10 @@ let UsersService = class UsersService {
                 error: 'TOC_NOT_ACCEPTED',
             });
         }
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, passwordHash: true },
+        });
         if (!user) {
             throw new common_1.NotFoundException({
                 success: false,
@@ -214,17 +231,42 @@ let UsersService = class UsersService {
                 error: 'EMAIL_ALREADY_EXISTS',
             });
         }
-        const passwordHash = await argon2.hash(data.password);
+        let passwordHash;
+        if (!user.passwordHash) {
+            if (!data.password || data.password.trim().length < 6) {
+                throw new common_1.BadRequestException({
+                    success: false,
+                    message: 'رمز عبور الزامی است و باید حداقل 6 کاراکتر باشد',
+                    error: 'PASSWORD_REQUIRED',
+                });
+            }
+            passwordHash = await argon2.hash(data.password.trim());
+        }
+        else if (data.password) {
+            if (data.password.trim().length < 6) {
+                throw new common_1.BadRequestException({
+                    success: false,
+                    message: 'رمز عبور باید حداقل 6 کاراکتر باشد',
+                    error: 'PASSWORD_TOO_SHORT',
+                });
+            }
+            passwordHash = await argon2.hash(data.password.trim());
+        }
+        const company = data.company?.trim() || null;
+        const jobTitle = data.jobTitle?.trim() || null;
+        const updateData = {
+            firstname: data.firstName.trim(),
+            lastname: data.lastName.trim(),
+            email: data.email.trim(),
+            company,
+            jobTitle,
+        };
+        if (passwordHash) {
+            updateData.passwordHash = passwordHash;
+        }
         const updatedUser = await this.prisma.user.update({
             where: { id: userId },
-            data: {
-                firstname: data.firstName,
-                lastname: data.lastName,
-                email: data.email,
-                company: data.company || null,
-                jobTitle: data.jobTitle || null,
-                passwordHash,
-            },
+            data: updateData,
             select: {
                 id: true,
                 firstname: true,
@@ -243,10 +285,65 @@ let UsersService = class UsersService {
         const statusFlags = await this.getUserStatusFlags(userId);
         return {
             success: true,
-            message: 'اطلاعات پروفایل با موفقیت تکمیل شد',
+            message: 'اطلاعات پروفایل با موفقیت به‌روزرسانی شد',
             data: {
                 ...updatedUser,
                 ...statusFlags,
+            },
+        };
+    }
+    async uploadAvatar(userId, file) {
+        try {
+            this.assetService.validateImageFile(file);
+        }
+        catch (error) {
+            throw new common_1.BadRequestException(error.message);
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { avatarAssetId: true },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException({
+                success: false,
+                message: 'کاربر یافت نشد',
+                error: 'USER_NOT_FOUND',
+            });
+        }
+        const asset = await this.assetService.createAsset(file, `users/${userId}/avatar`, userId, { userId });
+        if (user.avatarAssetId) {
+            try {
+                await this.assetService.deleteAsset(user.avatarAssetId);
+            }
+            catch (error) {
+                console.error('Error deleting old avatar:', error);
+            }
+        }
+        const updatedUser = await this.prisma.user.update({
+            where: { id: userId },
+            data: { avatarAssetId: asset.id },
+            select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+                phone: true,
+                avatarAssetId: true,
+                avatarAsset: {
+                    select: {
+                        id: true,
+                        url: true,
+                        type: true,
+                    },
+                },
+            },
+        });
+        return {
+            success: true,
+            message: 'آواتار با موفقیت آپلود شد',
+            data: {
+                avatarAssetId: updatedUser.avatarAssetId,
+                avatarUrl: updatedUser.avatarAsset?.url || null,
             },
         };
     }
@@ -255,5 +352,6 @@ exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('PRISMA')),
-    __metadata("design:paramtypes", [client_1.PrismaClient])
+    __metadata("design:paramtypes", [client_1.PrismaClient,
+        asset_service_1.AssetService])
 ], UsersService);

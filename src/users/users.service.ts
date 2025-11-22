@@ -13,12 +13,35 @@ export class UsersService {
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        firstname: true,
+        lastname: true,
+        email: true,
+        phone: true,
+        company: true,
+        jobTitle: true,
+        role: true,
+        avatarAssetId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
         avatarAsset: {
           select: {
             id: true,
             url: true,
             type: true,
+          },
+        },
+        attendees: {
+          select: {
+            id: true,
+            eventId: true,
+            role: true,
+            showPhone: true,
+            showEmail: true,
+            showCompany: true,
           },
         },
       },

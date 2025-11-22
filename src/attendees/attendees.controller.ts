@@ -4,6 +4,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagg
 import { AttendeesService } from './attendees.service';
 import { ConnectionRequestService } from './connection-request.service';
 import { CreateConnectionRequestDto, UpdateConnectionRequestDto } from './dto/connection-request.dto';
+import { UpdateAttendeePrivacyDto } from './dto/update-attendee-privacy.dto';
 
 @ApiTags('Attendees')
 @ApiBearerAuth()
@@ -36,6 +37,17 @@ export class AttendeesController {
   @Get('events/:eventId/attendees/speakers')
   async getEventSpeakers(@Param('eventId') eventId: string, @Req() req: any) {
     return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'SPEAKER');
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Update attendee privacy settings' })
+  @Patch('attendees/:id/privacy')
+  async updateAttendeePrivacy(
+    @Param('id') attendeeId: string,
+    @Body() dto: UpdateAttendeePrivacyDto,
+    @Req() req: any
+  ) {
+    return this.attendeesService.updatePrivacySettings(attendeeId, req.user.sub, dto);
   }
 
   @UseGuards(AuthGuard('jwt'))

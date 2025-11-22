@@ -184,6 +184,8 @@ export class ConnectionRequestService {
 
     return {
       incomingRequests: incomingRequests.map(req => ({
+        id: req.id,
+        requestId: req.id,
         requesterId: req.requesterId,
         receiverId: req.receiverId,
         requestDateTime: req.requestDateTime.toISOString(),
@@ -193,6 +195,8 @@ export class ConnectionRequestService {
         requester: this.formatAttendeeData(req.requester)
       })),
       outgoingRequests: outgoingRequests.map(req => ({
+        id: req.id,
+        requestId: req.id,
         requesterId: req.requesterId,
         receiverId: req.receiverId,
         requestDateTime: req.requestDateTime.toISOString(),
@@ -204,6 +208,8 @@ export class ConnectionRequestService {
       connections: connections.map(conn => {
         const isRequester = attendeeIds.includes(conn.requesterId);
         return {
+          id: conn.id,
+          requestId: conn.id,
           requesterId: conn.requesterId,
           receiverId: conn.receiverId,
           requestDateTime: conn.requestDateTime.toISOString(),
