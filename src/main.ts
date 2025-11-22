@@ -7,7 +7,6 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Global validation pipe with custom error formatting
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -40,6 +39,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://0.0.0.0:3000',
+      'http://0.0.0.0:3002',
       'http://localhost:3000',
       'http://185.149.192.60:3000',
       'https://veventexpo.ir',

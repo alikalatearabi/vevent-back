@@ -55,6 +55,9 @@ export class SmsService {
 
       // Format phone number (remove leading 0 if exists, add country code if needed)
       const formattedPhone = this.formatPhoneNumber(phone);
+      
+      // Add logging for formatted phone number
+      this.logger.debug(`Formatted phone number: ${formattedPhone} (original: ${phone})`);
 
       const requestBody = {
         mobile: formattedPhone,
@@ -66,6 +69,14 @@ export class SmsService {
           }
         ]
       };
+
+      // Log the full request for debugging
+      this.logger.debug(`SMS API Request: ${JSON.stringify({
+        url: this.apiUrl,
+        templateId: this.templateId,
+        mobile: formattedPhone,
+        hasCode: !!code
+      })}`);
 
       const response = await axios.post(
         this.apiUrl,
@@ -80,11 +91,16 @@ export class SmsService {
         }
       );
 
+      // Log the full API response for debugging
+      this.logger.debug(`SMS API Response: ${JSON.stringify(response.data)}`);
+
       if (response.data.status === 1) {
         this.logger.log(`SMS sent successfully to ${phone} (MessageId: ${response.data.data.messageId}, Cost: ${response.data.data.cost})`);
+        this.logger.warn(`Note: API success doesn't guarantee delivery. Check SMS.ir dashboard for delivery status using MessageId: ${response.data.data.messageId}`);
         return true;
       } else {
         this.logger.error(`SMS sending failed: ${response.data.message || 'Unknown error'}`);
+        this.logger.error(`Full response: ${JSON.stringify(response.data)}`);
         return false;
       }
     } catch (error) {
