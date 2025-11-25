@@ -1,7 +1,8 @@
-import { Controller, Get, Query, Param, NotFoundException, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Query, Param, NotFoundException, Post, Body, UseGuards, Req, Put, Patch } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { FindEventsDto } from './dto/find-events.dto';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { RegisterAttendeeDto } from './dto/register-attendee.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
@@ -57,6 +58,26 @@ export class EventsController {
   async create(@Body() dto: CreateEventDto, @Req() req: any) {
     const userId = req.user?.sub;
     return this.eventsService.create(dto, userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @Put(':id')
+  @ApiOperation({ summary: 'Update event' })
+  @ApiResponse({ status: 200, description: 'Event updated successfully' })
+  @ApiResponse({ status: 404, description: 'Event not found' })
+  async update(@Param('id') id: string, @Body() dto: UpdateEventDto, @Req() req: any) {
+    return this.eventsService.update(id, dto);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @Patch(':id')
+  @ApiOperation({ summary: 'Partially update event' })
+  @ApiResponse({ status: 200, description: 'Event updated successfully' })
+  @ApiResponse({ status: 404, description: 'Event not found' })
+  async patch(@Param('id') id: string, @Body() dto: UpdateEventDto, @Req() req: any) {
+    return this.eventsService.update(id, dto);
   }
 
   // Public registration endpoint — auth optional

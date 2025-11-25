@@ -50,6 +50,8 @@ model Event {
   exhibitorId        String?
   timezone           String?
   published          Boolean             @default(false)
+  price              Decimal?            @db.Decimal(12, 2)
+  currency           String?             @default("IRR")
   createdById        String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt

@@ -183,6 +183,8 @@ export class EventsService {
         timed: data.timed ?? true,
         location: data.location,
         published: data.published ?? false,
+        price: data.price ? parseFloat(data.price.toString()) : undefined,
+        currency: data.currency || 'IRR',
       };
       if (data.exhibitorId) createData.exhibitor = { connect: { id: data.exhibitorId } };
       if (userId) createData.createdBy = { connect: { id: userId } };
@@ -207,6 +209,15 @@ export class EventsService {
     const tags = data.tags;
     const speakers = data.speakers;
     const { tags: _t, speakers: _s, ...updateFields } = data;
+    
+    // Handle price and currency conversion
+    if (data.price !== undefined) {
+      updateFields.price = parseFloat(data.price.toString());
+    }
+    if (data.currency !== undefined) {
+      updateFields.currency = data.currency;
+    }
+    
     return this.prisma.$transaction(async (tx) => {
       const up = await tx.event.update({ where: { id }, data: updateFields });
       if (tags) {
@@ -466,8 +477,8 @@ export class EventsService {
         end: event.end.toISOString(),
         location: event.location || null,
         timezone: event.timezone || 'Asia/Tehran',
-        price: defaultPrice,
-        currency: currency,
+        price: event.price ? parseFloat(event.price.toString()) : defaultPrice,
+        currency: event.currency || currency,
         features: features,
         published: event.published,
         isActive: isActive,

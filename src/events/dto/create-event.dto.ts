@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsArray, IsISO8601, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsISO8601, IsUUID, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEventDto {
@@ -62,4 +62,14 @@ export class CreateEventDto {
   @IsBoolean()
   @ApiPropertyOptional({ default: false })
   published?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @ApiPropertyOptional({ description: 'Event price in Rials', example: 150000 })
+  price?: number;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ description: 'Currency code', default: 'IRR', example: 'IRR' })
+  currency?: string;
 }

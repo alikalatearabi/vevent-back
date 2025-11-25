@@ -44,6 +44,8 @@ export class PaymentsService {
         title: true,
         description: true,
         createdById: true,
+        price: true,
+        currency: true,
       },
     });
 
@@ -155,6 +157,27 @@ export class PaymentsService {
       if (existingPayment.status === PaymentStatus.PENDING) {
         this.logger.log(`[Payment Initiation] Step 5: Returning existing pending payment`);
         
+        // Get current event price (may have changed since payment was created)
+        const currentEventPrice = event.price ? parseFloat(event.price.toString()) : this.defaultEventPrice;
+        const currentEventCurrency = event.currency || this.currency;
+        const storedAmount = existingPayment.amount.toNumber();
+        
+        // Check if event price has changed
+        if (currentEventPrice !== storedAmount) {
+          this.logger.warn(`[Payment Initiation] Step 5: ⚠️  Event price changed from ${storedAmount} to ${currentEventPrice}. Updating payment amount.`);
+          
+          // Update the payment record with new amount
+          await this.prisma.payment.update({
+            where: { id: existingPayment.id },
+            data: {
+              amount: currentEventPrice,
+              currency: currentEventCurrency,
+            },
+          });
+          
+          this.logger.log(`[Payment Initiation] Step 5: Updated payment amount to ${currentEventPrice} ${currentEventCurrency}`);
+        }
+        
         // For BitPay, call gateway service to get fresh transaction ID
         let gatewayResponse = null;
         if (existingPayment.gateway === 'bitpay') {
@@ -168,8 +191,9 @@ export class PaymentsService {
             this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured`);
           } else {
             try {
+              // Use current event price, not stored payment amount
               gatewayResponse = await this.paymentGatewayService.initiatePayment({
-                amount: existingPayment.amount.toNumber(),
+                amount: currentEventPrice,
                 description: `پرداخت هزینه رویداد`,
                 callbackUrl,
                 metadata: {
@@ -186,14 +210,14 @@ export class PaymentsService {
           }
         }
         
-        // Return existing pending payment
+        // Return existing pending payment (with updated amount if changed)
         const response: any = {
           success: true,
           paymentId: existingPayment.id,
           paymentUrl: gatewayResponse?.paymentUrl || existingPayment.paymentUrl,
           status: existingPayment.status.toLowerCase(),
-          amount: existingPayment.amount.toNumber(),
-          currency: existingPayment.currency,
+          amount: currentEventPrice, // Use current event price, not stored amount
+          currency: currentEventCurrency, // Use current event currency
           gateway: existingPayment.gateway,
           authority: existingPayment.authority,
           message: 'در حال انتقال به درگاه پرداخت...',
@@ -218,10 +242,12 @@ export class PaymentsService {
     }
 
     // 6. Calculate payment amount
-    // For now, use default price. In the future, this can come from event metadata
+    // Use event price if available, otherwise use default from environment
     this.logger.debug(`[Payment Initiation] Step 6: Calculating payment amount`);
-    const amount = this.defaultEventPrice;
-    this.logger.log(`[Payment Initiation] Step 6: Payment amount: ${amount} ${this.currency}`);
+    const eventPrice = event.price ? parseFloat(event.price.toString()) : this.defaultEventPrice;
+    const eventCurrency = event.currency || this.currency;
+    const amount = eventPrice;
+    this.logger.log(`[Payment Initiation] Step 6: Payment amount: ${amount} ${eventCurrency} (from ${event.price ? 'event' : 'default'})`);
 
     // 7. Create payment record
     this.logger.debug(`[Payment Initiation] Step 7: Creating payment record in database`);
