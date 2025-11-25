@@ -154,107 +154,135 @@ export class PaymentsService {
         });
       }
 
+      if (existingPayment.status === PaymentStatus.FAILED) {
+        // Delete failed payment to allow creating a new one (due to unique constraint on userId+eventId)
+        this.logger.log(`[Payment Initiation] Step 5: Found failed payment, deleting it to allow new payment creation`);
+        await this.prisma.payment.delete({
+          where: { id: existingPayment.id },
+        });
+        this.logger.log(`[Payment Initiation] Step 5: Failed payment deleted, proceeding to create new payment`);
+        // Continue to create new payment (fall through)
+      }
+
       if (existingPayment.status === PaymentStatus.PENDING) {
-        this.logger.log(`[Payment Initiation] Step 5: Returning existing pending payment`);
+        // Check if payment is too old (BitPay transactions expire after ~30 minutes)
+        const paymentAge = Date.now() - existingPayment.createdAt.getTime();
+        const maxPaymentAge = 30 * 60 * 1000; // 30 minutes in milliseconds
+        const isExpired = paymentAge > maxPaymentAge;
         
-        // Get current event price (may have changed since payment was created)
-        const currentEventPrice = event.price ? parseFloat(event.price.toString()) : this.defaultEventPrice;
-        const currentEventCurrency = event.currency || this.currency;
-        const storedAmount = existingPayment.amount.toNumber();
-        
-        // Check if event price has changed
-        if (currentEventPrice !== storedAmount) {
-          this.logger.warn(`[Payment Initiation] Step 5: ⚠️  Event price changed from ${storedAmount} to ${currentEventPrice}. Updating payment amount.`);
+        if (isExpired) {
+          this.logger.warn(`[Payment Initiation] Step 5: Existing pending payment is expired (age: ${Math.floor(paymentAge / 1000 / 60)} minutes). Deleting expired payment and creating new one.`);
           
-          // Update the payment record with new amount
-          await this.prisma.payment.update({
+          // Delete expired payment to allow creating a new one (due to unique constraint on userId+eventId)
+          await this.prisma.payment.delete({
             where: { id: existingPayment.id },
-            data: {
-              amount: currentEventPrice,
-              currency: currentEventCurrency,
-            },
           });
           
-          this.logger.log(`[Payment Initiation] Step 5: Updated payment amount to ${currentEventPrice} ${currentEventCurrency}`);
-        }
-        
-        // For BitPay, call gateway service to get fresh transaction ID
-        let gatewayResponse = null;
-        if (existingPayment.gateway === 'bitpay') {
-          this.logger.debug(`[Payment Initiation] Step 5: Calling BitPay gateway for existing payment to get fresh transaction ID`);
+          // Continue to create a new payment (fall through to payment creation logic)
+          this.logger.log(`[Payment Initiation] Step 5: Expired payment deleted, proceeding to create new payment`);
+        } else {
+          // Payment is still valid, return it
+          this.logger.log(`[Payment Initiation] Step 5: Returning existing pending payment (age: ${Math.floor(paymentAge / 1000 / 60)} minutes)`);
           
-          const callbackUrl = process.env.PAYMENT_CALLBACK_URL 
-            ? `${process.env.PAYMENT_CALLBACK_URL}?paymentId=${existingPayment.id}`
-            : undefined;
+          // Get current event price (may have changed since payment was created)
+          const currentEventPrice = event.price ? parseFloat(event.price.toString()) : this.defaultEventPrice;
+          const currentEventCurrency = event.currency || this.currency;
+          const storedAmount = existingPayment.amount.toNumber();
           
-          if (!callbackUrl) {
-            this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured`);
-          } else {
-            try {
-              // Use current event price, not stored payment amount
-              gatewayResponse = await this.paymentGatewayService.initiatePayment({
+          // Check if event price has changed
+          if (currentEventPrice !== storedAmount) {
+            this.logger.warn(`[Payment Initiation] Step 5: ⚠️  Event price changed from ${storedAmount} to ${currentEventPrice}. Updating payment amount.`);
+            
+            // Update the payment record with new amount
+            await this.prisma.payment.update({
+              where: { id: existingPayment.id },
+              data: {
                 amount: currentEventPrice,
-                description: `پرداخت هزینه رویداد`,
-                callbackUrl,
-                metadata: {
-                  paymentId: existingPayment.id,
-                  eventId: existingPayment.eventId,
-                },
-              });
-              
-              this.logger.log(`[Payment Initiation] Step 5: ✅ Got fresh transaction ID from BitPay: ${gatewayResponse.transactionId || gatewayResponse.id_get}`);
-              
-              // Store BitPay transaction ID in payment metadata
-              if (gatewayResponse.transactionId || gatewayResponse.id_get) {
-                const metadata: any = existingPayment.metadata || {};
-                metadata.bitpayTransactionId = gatewayResponse.transactionId || gatewayResponse.id_get;
-                metadata.bitpayIdGet = gatewayResponse.id_get || gatewayResponse.transactionId;
-                
-                await this.prisma.payment.update({
-                  where: { id: existingPayment.id },
-                  data: {
-                    metadata,
-                    paymentUrl: gatewayResponse.paymentUrl,
+                currency: currentEventCurrency,
+              },
+            });
+            
+            this.logger.log(`[Payment Initiation] Step 5: Updated payment amount to ${currentEventPrice} ${currentEventCurrency}`);
+          }
+        
+          // For BitPay, call gateway service to get fresh transaction ID
+          let gatewayResponse = null;
+          if (existingPayment.gateway === 'bitpay') {
+            this.logger.debug(`[Payment Initiation] Step 5: Calling BitPay gateway for existing payment to get fresh transaction ID`);
+            
+            // BitPay may not accept query parameters in callback URL
+            // We'll use BitPay's transaction ID to look up the payment in the callback
+            const callbackUrl = process.env.PAYMENT_CALLBACK_URL || undefined;
+            
+            if (!callbackUrl) {
+              this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured`);
+            } else {
+              try {
+                // Use current event price, not stored payment amount
+                gatewayResponse = await this.paymentGatewayService.initiatePayment({
+                  amount: currentEventPrice,
+                  description: `پرداخت هزینه رویداد`,
+                  callbackUrl,
+                  metadata: {
+                    paymentId: existingPayment.id,
+                    eventId: existingPayment.eventId,
                   },
                 });
                 
-                this.logger.debug(`[Payment Initiation] Step 5: Stored BitPay transaction ID in payment metadata: ${metadata.bitpayIdGet}`);
+                this.logger.log(`[Payment Initiation] Step 5: ✅ Got fresh transaction ID from BitPay: ${gatewayResponse.transactionId || gatewayResponse.id_get}`);
+                
+                // Store BitPay transaction ID in payment metadata
+                if (gatewayResponse.transactionId || gatewayResponse.id_get) {
+                  const metadata: any = existingPayment.metadata || {};
+                  metadata.bitpayTransactionId = gatewayResponse.transactionId || gatewayResponse.id_get;
+                  metadata.bitpayIdGet = gatewayResponse.id_get || gatewayResponse.transactionId;
+                  
+                  await this.prisma.payment.update({
+                    where: { id: existingPayment.id },
+                    data: {
+                      metadata,
+                      paymentUrl: gatewayResponse.paymentUrl,
+                    },
+                  });
+                  
+                  this.logger.debug(`[Payment Initiation] Step 5: Stored BitPay transaction ID in payment metadata: ${metadata.bitpayIdGet}`);
+                }
+              } catch (error) {
+                this.logger.error(`[Payment Initiation] Step 5: Failed to get transaction ID from BitPay: ${error.message}`);
+                // Continue with existing payment data if gateway call fails
               }
-            } catch (error) {
-              this.logger.error(`[Payment Initiation] Step 5: Failed to get transaction ID from BitPay: ${error.message}`);
-              // Continue with existing payment data if gateway call fails
             }
           }
+          
+          // Return existing pending payment (with updated amount if changed)
+          const response: any = {
+            success: true,
+            paymentId: existingPayment.id,
+            paymentUrl: gatewayResponse?.paymentUrl || existingPayment.paymentUrl,
+            status: existingPayment.status.toLowerCase(),
+            amount: currentEventPrice, // Use current event price, not stored amount
+            currency: currentEventCurrency, // Use current event currency
+            gateway: existingPayment.gateway,
+            authority: existingPayment.authority,
+            message: 'در حال انتقال به درگاه پرداخت...',
+          };
+          
+          // Add gateway response data if available (transactionId, formData, etc.)
+          if (gatewayResponse) {
+            if (gatewayResponse.transactionId) {
+              response.transactionId = gatewayResponse.transactionId;
+            }
+            if (gatewayResponse.id_get) {
+              response.id_get = gatewayResponse.id_get;
+            }
+            if (gatewayResponse.formData) {
+              response.formData = gatewayResponse.formData;
+            }
+            this.logger.debug(`[Payment Initiation] Step 5: Added gateway response data (transactionId: ${gatewayResponse.transactionId || gatewayResponse.id_get})`);
+          }
+          
+          return response;
         }
-        
-        // Return existing pending payment (with updated amount if changed)
-        const response: any = {
-          success: true,
-          paymentId: existingPayment.id,
-          paymentUrl: gatewayResponse?.paymentUrl || existingPayment.paymentUrl,
-          status: existingPayment.status.toLowerCase(),
-          amount: currentEventPrice, // Use current event price, not stored amount
-          currency: currentEventCurrency, // Use current event currency
-          gateway: existingPayment.gateway,
-          authority: existingPayment.authority,
-          message: 'در حال انتقال به درگاه پرداخت...',
-        };
-        
-        // Add gateway response data if available (transactionId, formData, etc.)
-        if (gatewayResponse) {
-          if (gatewayResponse.transactionId) {
-            response.transactionId = gatewayResponse.transactionId;
-          }
-          if (gatewayResponse.id_get) {
-            response.id_get = gatewayResponse.id_get;
-          }
-          if (gatewayResponse.formData) {
-            response.formData = gatewayResponse.formData;
-          }
-          this.logger.debug(`[Payment Initiation] Step 5: Added gateway response data (transactionId: ${gatewayResponse.transactionId || gatewayResponse.id_get})`);
-        }
-        
-        return response;
       }
     }
 
@@ -284,11 +312,11 @@ export class PaymentsService {
     // 8. Initiate payment gateway
     this.logger.debug(`[Payment Initiation] Step 8: Initiating payment gateway`);
     try {
-      const callbackUrl = process.env.PAYMENT_CALLBACK_URL 
-        ? `${process.env.PAYMENT_CALLBACK_URL}?paymentId=${payment.id}`
-        : undefined;
+      // BitPay may not accept query parameters in callback URL
+      // We'll use BitPay's transaction ID to look up the payment in the callback
+      const callbackUrl = process.env.PAYMENT_CALLBACK_URL || undefined;
 
-      this.logger.log(`[Payment Initiation] Step 8: Callback URL: ${callbackUrl}`);
+      this.logger.log(`[Payment Initiation] Step 8: Callback URL: ${callbackUrl} (without query parameters for BitPay compatibility)`);
       this.logger.debug(`[Payment Initiation] Step 8: Calling payment gateway service`);
 
       const gatewayResponse = await this.paymentGatewayService.initiatePayment({

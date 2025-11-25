@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, Req, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
@@ -66,13 +67,16 @@ export class PaymentsController {
   @ApiResponse({ status: 200, description: 'Callback processed' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid parameters' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
-  async bitpayCallback(@Query() query: any) {
+  async bitpayCallback(@Query() query: any, @Res() res: Response) {
     // Extract parameters from query string
     const { paymentId, id_get, trans_id, status } = query;
     
     console.log(`[Payment Controller] BitPay callback received`);
     console.log(`[Payment Controller] Callback params - paymentId: ${paymentId || 'N/A'}, id_get: ${id_get || 'N/A'}, trans_id: ${trans_id || 'N/A'}, status: ${status || 'N/A'}`);
     console.log(`[Payment Controller] Full query params:`, JSON.stringify(query));
+    
+    // Get frontend URL from environment or use default
+    const frontendUrl = process.env.FRONTEND_URL || process.env.PAYMENT_CALLBACK_URL?.replace('/payment/result', '') || 'https://veventexpo.ir';
     
     // If we have id_get but no paymentId, try to find payment by BitPay transaction ID
     if (id_get && !paymentId) {
@@ -89,42 +93,28 @@ export class PaymentsController {
               trans_id
             );
             console.log(`[Payment Controller] Verification result:`, JSON.stringify(verifyResult));
-            return verifyResult;
+            
+            // Redirect to frontend with payment result
+            const redirectUrl = `${frontendUrl}/payment/result?paymentId=${payment.id}&status=${verifyResult.success ? 'success' : 'failed'}&id_get=${id_get}&trans_id=${trans_id}`;
+            return res.redirect(redirectUrl);
           } else {
-            console.log(`[Payment Controller] trans_id missing, returning payment info for frontend verification`);
-            return {
-              success: true,
-              paymentId: payment.id,
-              id_get,
-              trans_id,
-              status,
-              message: 'Please verify payment using the verify endpoint',
-            };
+            console.log(`[Payment Controller] trans_id missing, redirecting to frontend for verification`);
+            const redirectUrl = `${frontendUrl}/payment/result?paymentId=${payment.id}&id_get=${id_get}&status=${status || 'pending'}`;
+            return res.redirect(redirectUrl);
           }
         } catch (error) {
           console.error(`[Payment Controller] Error during automatic verification:`, error);
-          return {
-            success: false,
-            message: 'خطا در تأیید پرداخت',
-            error: error.message,
-            paymentId: payment.id,
-            id_get,
-            trans_id,
-          };
+          const redirectUrl = `${frontendUrl}/payment/result?paymentId=${payment.id}&status=failed&error=${encodeURIComponent(error.message)}`;
+          return res.redirect(redirectUrl);
         }
       } else {
         console.warn(`[Payment Controller] Payment not found for BitPay transaction ID: ${id_get}`);
-        return {
-          success: false,
-          message: 'شناسه پرداخت یافت نشد',
-          error: 'PAYMENT_NOT_FOUND',
-          id_get,
-        };
+        const redirectUrl = `${frontendUrl}/payment/result?status=failed&error=PAYMENT_NOT_FOUND&id_get=${id_get}`;
+        return res.redirect(redirectUrl);
       }
     }
     
-    // If paymentId is provided, return it for frontend to verify
-    // Or if we have all required parameters, try to verify
+    // If paymentId is provided, try to verify and redirect
     if (paymentId && id_get && trans_id) {
       console.log(`[Payment Controller] All parameters present, attempting automatic verification`);
       try {
@@ -134,29 +124,20 @@ export class PaymentsController {
           trans_id
         );
         console.log(`[Payment Controller] Verification result:`, JSON.stringify(verifyResult));
-        return verifyResult;
+        
+        // Redirect to frontend with payment result
+        const redirectUrl = `${frontendUrl}/payment/result?paymentId=${paymentId}&status=${verifyResult.success ? 'success' : 'failed'}&id_get=${id_get}&trans_id=${trans_id}`;
+        return res.redirect(redirectUrl);
       } catch (error) {
         console.error(`[Payment Controller] Error during automatic verification:`, error);
-        return {
-          success: false,
-          message: 'خطا در تأیید پرداخت',
-          error: error.message,
-          paymentId,
-          id_get,
-          trans_id,
-        };
+        const redirectUrl = `${frontendUrl}/payment/result?paymentId=${paymentId}&status=failed&error=${encodeURIComponent(error.message)}`;
+        return res.redirect(redirectUrl);
       }
     }
     
-    // Fallback: return parameters for frontend to verify
-    return {
-      success: true,
-      message: 'Please verify payment using the verify endpoint',
-      paymentId,
-      id_get,
-      trans_id,
-      status,
-    };
+    // Fallback: redirect to frontend with available parameters
+    const redirectUrl = `${frontendUrl}/payment/result?${paymentId ? `paymentId=${paymentId}&` : ''}${id_get ? `id_get=${id_get}&` : ''}${trans_id ? `trans_id=${trans_id}&` : ''}status=${status || 'pending'}`;
+    return res.redirect(redirectUrl);
   }
 }
 

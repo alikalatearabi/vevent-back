@@ -124,18 +124,16 @@ export class PaymentGatewayService {
       
       this.logger.debug(`[BitPay] Selected URL: ${bitpayUrl}`);
       
-      // BitPay expects amounts in Tomans, not Rials!
-      // Convert Rials to Tomans (divide by 10)
-      // 1 Toman = 10 Rials
+      // BitPay expects amounts in Rials (not Tomans, despite some documentation saying otherwise)
+      // Ensure amount is an integer (no decimals)
       const amountInRials = Math.floor(request.amount);
-      const amountInTomans = Math.floor(amountInRials / 10);
       
-      // BitPay minimum is 500 Tomans (5000 Rials)
-      if (amountInTomans < 500) {
-        throw new Error(`Amount too low: ${amountInTomans} Tomans (${amountInRials} Rials). Minimum: 500 Tomans (5000 Rials)`);
+      // BitPay minimum is 5000 Rials
+      if (amountInRials < 5000) {
+        throw new Error(`Amount too low: ${amountInRials} Rials. Minimum: 5000 Rials`);
       }
       
-      this.logger.log(`[BitPay] Preparing payment: ${amountInTomans} Tomans (${amountInRials} Rials)`);
+      this.logger.log(`[BitPay] Preparing payment: ${amountInRials} Rials`);
       this.logger.debug(`[BitPay] URL: ${bitpayUrl}`);
       this.logger.debug(`[BitPay] Callback URL: ${request.callbackUrl}`);
       this.logger.debug(`[BitPay] API Key: ${apiKey.substring(0, 10)}...`);
@@ -143,16 +141,38 @@ export class PaymentGatewayService {
       // Generate a temporary authority for tracking
       const authority = this.generateAuthority();
       
-      // Prepare form data for BitPay - use Tomans, not Rials
-      const factorId = request.metadata?.paymentId || request.metadata?.eventId || authority;
+      // Prepare form data for BitPay
+      // BitPay requires factorId to be numeric and relatively short (6-8 digits recommended)
+      // Convert UUID to shorter numeric ID
+      let factorId: string;
+      if (request.metadata?.paymentId) {
+        // Convert UUID to shorter numeric: take first 6 hex characters for 6-7 digit number
+        const uuid = request.metadata.paymentId.replace(/-/g, '');
+        const numericId = parseInt(uuid.substring(0, 6), 16);
+        factorId = numericId.toString();
+        this.logger.debug(`[BitPay] Converted paymentId UUID to numeric factorId: ${factorId} (from ${request.metadata.paymentId})`);
+      } else if (request.metadata?.eventId) {
+        const uuid = request.metadata.eventId.replace(/-/g, '');
+        const numericId = parseInt(uuid.substring(0, 6), 16);
+        factorId = numericId.toString();
+        this.logger.debug(`[BitPay] Converted eventId UUID to numeric factorId: ${factorId} (from ${request.metadata.eventId})`);
+      } else {
+        // Use shorter timestamp-based numeric ID (last 8 digits)
+        factorId = Date.now().toString().slice(-8);
+        this.logger.debug(`[BitPay] Using timestamp-based factorId: ${factorId}`);
+      }
+      
       const formDataToSend = new URLSearchParams();
       formDataToSend.append('api', apiKey);
-      formDataToSend.append('amount', amountInTomans.toString()); // Send Tomans to BitPay
+      formDataToSend.append('amount', amountInRials.toString()); // Send Rials to BitPay
       formDataToSend.append('redirect', request.callbackUrl);
-      formDataToSend.append('factorId', factorId);
+      // factorId is optional in BitPay, but we include it for tracking
+      if (factorId) {
+        formDataToSend.append('factorId', factorId);
+      }
       
       this.logger.log(`[BitPay] Calling BitPay gateway-send server-side: ${bitpayUrl}`);
-      this.logger.debug(`[BitPay] Request data: api=${apiKey.substring(0, 10)}..., amount=${amountInTomans} Tomans (${amountInRials} Rials), redirect=${request.callbackUrl}, factorId=${factorId}`);
+      this.logger.debug(`[BitPay] Request data: api=${apiKey.substring(0, 10)}..., amount=${amountInRials} Rials, redirect=${request.callbackUrl}, factorId=${factorId}`);
       
       // Call BitPay server-side to get transaction ID
       const response = await axios.post(bitpayUrl, formDataToSend, {
@@ -169,8 +189,23 @@ export class PaymentGatewayService {
       
       // Validate transaction ID (should be a positive number, not an error code like -1, -2, etc.)
       if (!transactionId || transactionId.startsWith('-') || isNaN(parseInt(transactionId))) {
+        // BitPay error codes:
+        // -1: Invalid API key
+        // -2: Invalid amount (مبلغ نامعتبر است)
+        // -3: Invalid callback URL
+        // -4: General validation error
+        const errorMessages: Record<string, string> = {
+          '-1': 'کلید API نامعتبر است',
+          '-2': 'مبلغ نامعتبر است (ممکن است کمتر از حداقل یا فرمت نادرست باشد)',
+          '-3': 'آدرس بازگشت (callback) نامعتبر است',
+          '-4': 'خطای اعتبارسنجی عمومی',
+        };
+        
+        const errorMessage = errorMessages[transactionId] || `خطای BitPay: ${transactionId}`;
         this.logger.error(`[BitPay] Invalid transaction ID received: ${transactionId}`);
-        throw new Error(`BitPay returned error: ${transactionId}`);
+        this.logger.error(`[BitPay] Error details: ${errorMessage}`);
+        this.logger.error(`[BitPay] Request details - Amount: ${amountInRials} Rials, Callback: ${request.callbackUrl}, FactorId: ${factorId || 'N/A'}`);
+        throw new Error(`BitPay returned error: ${transactionId} - ${errorMessage}`);
       }
       
       this.logger.log(`[BitPay] ✅ Transaction ID received: ${transactionId}`);
@@ -187,7 +222,7 @@ export class PaymentGatewayService {
         id_get: transactionId, // Also include as id_get for compatibility
         formData: {
           api: apiKey,
-          amount: amountInTomans.toString(), // Send Tomans to BitPay (not Rials)
+          amount: amountInRials.toString(), // Send Rials to BitPay
           redirect: request.callbackUrl,
           factorId: factorId,
         },
