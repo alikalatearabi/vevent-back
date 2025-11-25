@@ -22,7 +22,20 @@ export class PaymentsController {
   async initiatePayment(@Body() dto: InitiatePaymentDto, @Req() req: any) {
     const userId = req.user.sub;
     console.log(`[Payment Controller] Initiate payment request - userId: ${userId}, eventId: ${dto.eventId}`);
-    return this.paymentsService.initiatePayment(userId, dto);
+    
+    const response = await this.paymentsService.initiatePayment(userId, dto);
+    
+    // Log the full response being sent to frontend
+    console.log(`[Payment Controller] Response to frontend:`, JSON.stringify(response, null, 2));
+    
+    // Also log formData separately if it exists (for easier debugging)
+    if (response.formData) {
+      console.log(`[Payment Controller] FormData being sent:`, JSON.stringify(response.formData, null, 2));
+      console.log(`[Payment Controller] Payment URL: ${response.paymentUrl}`);
+      console.log(`[Payment Controller] Gateway: ${response.gateway}`);
+    }
+    
+    return response;
   }
 
   @UseGuards(AuthGuard('jwt'))

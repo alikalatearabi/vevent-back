@@ -15,6 +15,8 @@ interface PaymentResponse {
   message?: string;
   // BitPay specific fields
   formData?: Record<string, string>; // For BitPay form submission
+  transactionId?: string; // The id_get from BitPay
+  id_get?: string; // Alternative name for transactionId (for compatibility)
 }
 
 interface VerificationRequest {
@@ -101,7 +103,12 @@ export class PaymentGatewayService {
   private async initiateBitPayPayment(request: PaymentRequest): Promise<PaymentResponse> {
     try {
       const apiKey = process.env.BITPAY_API_KEY;
-      const isTest = process.env.BITPAY_TEST_MODE !== 'false'; // Default to test mode
+      const testModeEnv = process.env.BITPAY_TEST_MODE;
+      const isTest = testModeEnv !== 'false'; // Default to test mode
+      
+      this.logger.debug(`[BitPay] BITPAY_TEST_MODE env value: "${testModeEnv}" (type: ${typeof testModeEnv})`);
+      this.logger.debug(`[BitPay] isTest calculated: ${isTest}`);
+      this.logger.debug(`[BitPay] Will use ${isTest ? 'TEST' : 'PRODUCTION'} URL`);
       
       if (!apiKey) {
         throw new Error('BITPAY_API_KEY is not configured');
@@ -115,6 +122,8 @@ export class PaymentGatewayService {
         ? 'https://bitpay.ir/payment-test/gateway-send'
         : 'https://bitpay.ir/payment/gateway-send';
       
+      this.logger.debug(`[BitPay] Selected URL: ${bitpayUrl}`);
+      
       // Ensure amount is an integer (BitPay requires Rials, no decimals)
       const amount = Math.floor(request.amount);
       
@@ -126,24 +135,67 @@ export class PaymentGatewayService {
       // Generate a temporary authority for tracking
       const authority = this.generateAuthority();
       
-      // Return form data for frontend to submit
-      // DO NOT make server-side API call - BitPay expects browser form submission
-      // The frontend will create a form and submit it directly to BitPay
+      // Prepare form data for BitPay
+      const factorId = request.metadata?.paymentId || request.metadata?.eventId || authority;
+      const formDataToSend = new URLSearchParams();
+      formDataToSend.append('api', apiKey);
+      formDataToSend.append('amount', amount.toString());
+      formDataToSend.append('redirect', request.callbackUrl);
+      formDataToSend.append('factorId', factorId);
+      
+      this.logger.log(`[BitPay] Calling BitPay gateway-send server-side: ${bitpayUrl}`);
+      this.logger.debug(`[BitPay] Request data: api=${apiKey.substring(0, 10)}..., amount=${amount}, redirect=${request.callbackUrl}, factorId=${factorId}`);
+      
+      // Call BitPay server-side to get transaction ID
+      const response = await axios.post(bitpayUrl, formDataToSend, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        timeout: 10000,
+      });
+      
+      // BitPay returns the transaction ID as plain text
+      const transactionId = response.data?.toString().trim();
+      
+      this.logger.debug(`[BitPay] Raw response from BitPay: ${transactionId}`);
+      
+      // Validate transaction ID (should be a positive number, not an error code like -1, -2, etc.)
+      if (!transactionId || transactionId.startsWith('-') || isNaN(parseInt(transactionId))) {
+        this.logger.error(`[BitPay] Invalid transaction ID received: ${transactionId}`);
+        throw new Error(`BitPay returned error: ${transactionId}`);
+      }
+      
+      this.logger.log(`[BitPay] ✅ Transaction ID received: ${transactionId}`);
+      
+      // Construct the payment URL that frontend should redirect to
+      const paymentRedirectUrl = bitpayUrl.replace('/gateway-send', `/gateway-${transactionId}-get`);
+      this.logger.debug(`[BitPay] Payment redirect URL: ${paymentRedirectUrl}`);
+      
       return {
         success: true,
         authority,
-        paymentUrl: bitpayUrl,
+        paymentUrl: paymentRedirectUrl, // URL to redirect to (gateway-{id_get}-get)
+        transactionId: transactionId,
+        id_get: transactionId, // Also include as id_get for compatibility
         formData: {
           api: apiKey,
           amount: amount.toString(), // Must be string, integer value
           redirect: request.callbackUrl,
-          factorId: request.metadata?.paymentId || request.metadata?.eventId || authority, // Add factorId for tracking
+          factorId: factorId,
         },
         message: 'در حال انتقال به درگاه پرداخت...',
       };
     } catch (error) {
-      this.logger.error(`[BitPay] Error preparing payment: ${error.message}`);
-      throw new Error(`BitPay payment preparation failed: ${error.message}`);
+      this.logger.error(`[BitPay] Error initiating payment: ${error.message}`);
+      if (axios.isAxiosError(error)) {
+        this.logger.error(`[BitPay] Response status: ${error.response?.status}`);
+        this.logger.error(`[BitPay] Response data: ${error.response?.data}`);
+        if (error.response?.data) {
+          const errorMessage = error.response.data.toString().trim();
+          this.logger.error(`[BitPay] BitPay error code: ${errorMessage}`);
+        }
+      }
+      throw new Error(`BitPay payment initiation failed: ${error.message}`);
     }
   }
 

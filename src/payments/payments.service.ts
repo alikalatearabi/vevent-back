@@ -155,88 +155,33 @@ export class PaymentsService {
       if (existingPayment.status === PaymentStatus.PENDING) {
         this.logger.log(`[Payment Initiation] Step 5: Returning existing pending payment`);
         
-        // Regenerate formData for BitPay if needed
-        let formData = null;
-        if (existingPayment.gateway === 'bitpay' && existingPayment.paymentUrl) {
-          this.logger.debug(`[Payment Initiation] Step 5: Regenerating BitPay formData for existing payment`);
-          const apiKey = process.env.BITPAY_API_KEY;
+        // For BitPay, call gateway service to get fresh transaction ID
+        let gatewayResponse = null;
+        if (existingPayment.gateway === 'bitpay') {
+          this.logger.debug(`[Payment Initiation] Step 5: Calling BitPay gateway for existing payment to get fresh transaction ID`);
           
-          // Use environment variable to determine test/production mode
-          const envIsTest = process.env.BITPAY_TEST_MODE !== 'false';
-          const isTest = envIsTest; // Use environment variable, not stored URL
-          const expectedUrl = isTest 
-            ? 'https://bitpay.ir/payment-test/gateway-send'
-            : 'https://bitpay.ir/payment/gateway-send';
-          
-          // Warn if stored URL doesn't match current environment
-          const storedUrl = existingPayment.paymentUrl;
-          const storedIsTest = storedUrl?.includes('/payment-test/');
-          if (storedIsTest !== undefined && storedIsTest !== envIsTest) {
-            this.logger.warn(`[Payment Initiation] Step 5: ⚠️  WARNING: Stored payment URL mode (${storedIsTest ? 'TEST' : 'PRODUCTION'}) doesn't match environment (${envIsTest ? 'TEST' : 'PRODUCTION'})`);
-            this.logger.warn(`[Payment Initiation] Step 5: Using environment mode: ${envIsTest ? 'TEST' : 'PRODUCTION'}`);
-          }
-          
-          this.logger.debug(`[Payment Initiation] Step 5: BitPay mode: ${isTest ? 'TEST' : 'PRODUCTION'} (from environment variable)`);
-          this.logger.debug(`[Payment Initiation] Step 5: Stored payment URL: ${storedUrl}`);
-          this.logger.debug(`[Payment Initiation] Step 5: Expected URL: ${expectedUrl}`);
-          
-          // Construct callback URL (same logic as new payments)
           const callbackUrl = process.env.PAYMENT_CALLBACK_URL 
             ? `${process.env.PAYMENT_CALLBACK_URL}?paymentId=${existingPayment.id}`
             : undefined;
           
           if (!callbackUrl) {
-            this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured, using default`);
-          }
-          
-          if (apiKey && callbackUrl) {
-            // Validate API key format (BitPay API keys are typically 40-60 characters)
-            if (apiKey.length < 20 || apiKey.length > 100) {
-              this.logger.warn(`[Payment Initiation] Step 5: ⚠️  WARNING: API key length (${apiKey.length}) seems unusual. BitPay keys are typically 40-60 characters.`);
-            }
-            
-            // Ensure amount is an integer (BitPay requires Rials, no decimals)
-            const amount = Math.floor(existingPayment.amount.toNumber());
-            
-            // Validate amount (must be positive and reasonable)
-            if (amount <= 0) {
-              this.logger.error(`[Payment Initiation] Step 5: Invalid amount: ${amount}`);
-              throw new BadRequestException({
-                success: false,
-                message: 'مبلغ پرداخت نامعتبر است',
-                error: 'INVALID_AMOUNT',
-              });
-            }
-            
-            // Minimum amount check (BitPay might have minimums)
-            if (amount < 1000) {
-              this.logger.warn(`[Payment Initiation] Step 5: ⚠️  WARNING: Amount (${amount}) is very low. BitPay might require minimum amounts.`);
-            }
-            
-            // Warn if using localhost callback URL (BitPay might reject it)
-            if (callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1')) {
-              this.logger.warn(`[Payment Initiation] Step 5: ⚠️  WARNING: Callback URL uses localhost - BitPay may reject this!`);
-              this.logger.warn(`[Payment Initiation] Step 5: Callback URL: ${callbackUrl}`);
-              this.logger.warn(`[Payment Initiation] Step 5: BitPay typically requires a public URL for callback`);
-            }
-            
-            formData = {
-              api: apiKey,
-              amount: amount.toString(), // Must be string, integer value
-              redirect: callbackUrl,
-              factorId: existingPayment.id, // Add factorId using payment ID
-            };
-            this.logger.debug(`[Payment Initiation] Step 5: BitPay formData regenerated`);
-            this.logger.debug(`[Payment Initiation] Step 5: formData.api: ${apiKey.substring(0, 10)}... (length: ${apiKey.length})`);
-            this.logger.debug(`[Payment Initiation] Step 5: formData.amount: ${amount} (type: ${typeof amount.toString()})`);
-            this.logger.debug(`[Payment Initiation] Step 5: formData.redirect: ${callbackUrl}`);
-            this.logger.log(`[Payment Initiation] Step 5: ✅ BitPay formData ready for submission`);
+            this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured`);
           } else {
-            if (!apiKey) {
-              this.logger.warn(`[Payment Initiation] Step 5: BITPAY_API_KEY not found, cannot regenerate formData`);
-            }
-            if (!callbackUrl) {
-              this.logger.warn(`[Payment Initiation] Step 5: Callback URL not configured, cannot regenerate formData`);
+            try {
+              gatewayResponse = await this.paymentGatewayService.initiatePayment({
+                amount: existingPayment.amount.toNumber(),
+                description: `پرداخت هزینه رویداد`,
+                callbackUrl,
+                metadata: {
+                  paymentId: existingPayment.id,
+                  eventId: existingPayment.eventId,
+                },
+              });
+              
+              this.logger.log(`[Payment Initiation] Step 5: ✅ Got fresh transaction ID from BitPay: ${gatewayResponse.transactionId || gatewayResponse.id_get}`);
+            } catch (error) {
+              this.logger.error(`[Payment Initiation] Step 5: Failed to get transaction ID from BitPay: ${error.message}`);
+              // Continue with existing payment data if gateway call fails
             }
           }
         }
@@ -245,7 +190,7 @@ export class PaymentsService {
         const response: any = {
           success: true,
           paymentId: existingPayment.id,
-          paymentUrl: existingPayment.paymentUrl,
+          paymentUrl: gatewayResponse?.paymentUrl || existingPayment.paymentUrl,
           status: existingPayment.status.toLowerCase(),
           amount: existingPayment.amount.toNumber(),
           currency: existingPayment.currency,
@@ -254,10 +199,18 @@ export class PaymentsService {
           message: 'در حال انتقال به درگاه پرداخت...',
         };
         
-        // Add formData if available (required for BitPay)
-        if (formData) {
-          response.formData = formData;
-          this.logger.debug(`[Payment Initiation] Step 5: Added formData to response`);
+        // Add gateway response data if available (transactionId, formData, etc.)
+        if (gatewayResponse) {
+          if (gatewayResponse.transactionId) {
+            response.transactionId = gatewayResponse.transactionId;
+          }
+          if (gatewayResponse.id_get) {
+            response.id_get = gatewayResponse.id_get;
+          }
+          if (gatewayResponse.formData) {
+            response.formData = gatewayResponse.formData;
+          }
+          this.logger.debug(`[Payment Initiation] Step 5: Added gateway response data (transactionId: ${gatewayResponse.transactionId || gatewayResponse.id_get})`);
         }
         
         return response;
@@ -371,7 +324,7 @@ export class PaymentsService {
         message: 'در حال انتقال به درگاه پرداخت...',
       };
 
-      // Add BitPay form data if available (for frontend form submission)
+      // Add BitPay form data and transaction ID if available
       if (gatewayResponse.formData) {
         // Ensure factorId is present (use payment ID as fallback)
         if (!gatewayResponse.formData.factorId) {
@@ -379,6 +332,22 @@ export class PaymentsService {
         }
         response.formData = gatewayResponse.formData;
         this.logger.debug(`[Payment Initiation] Step 9: Added formData to response`);
+      }
+      
+      // Add transaction ID if available (for BitPay)
+      if (gatewayResponse.transactionId) {
+        response.transactionId = gatewayResponse.transactionId;
+        this.logger.debug(`[Payment Initiation] Step 9: Added transactionId: ${gatewayResponse.transactionId}`);
+      }
+      if (gatewayResponse.id_get) {
+        response.id_get = gatewayResponse.id_get;
+        this.logger.debug(`[Payment Initiation] Step 9: Added id_get: ${gatewayResponse.id_get}`);
+      }
+      
+      // Update paymentUrl if gateway provided a redirect URL
+      if (gatewayResponse.paymentUrl) {
+        response.paymentUrl = gatewayResponse.paymentUrl;
+        this.logger.debug(`[Payment Initiation] Step 9: Updated paymentUrl: ${gatewayResponse.paymentUrl}`);
       }
 
       this.logger.log(`[Payment Initiation] ✅ Payment initiation completed successfully`);
