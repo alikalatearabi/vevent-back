@@ -464,29 +464,68 @@ export class PaymentsService {
   async verifyPayment(userId: string, dto: VerifyPaymentDto) {
     const { paymentId, authority, status: gatewayStatus, id_get, trans_id } = dto;
 
-    this.logger.log(`[Payment Verification] Starting verification for userId: ${userId}, paymentId: ${paymentId}`);
+    this.logger.log(`[Payment Verification] Starting verification for userId: ${userId}, paymentId: ${paymentId || 'N/A'}`);
     this.logger.debug(`[Payment Verification] Parameters - authority: ${authority || 'N/A'}, id_get: ${id_get || 'N/A'}, trans_id: ${trans_id || 'N/A'}, gatewayStatus: ${gatewayStatus || 'N/A'}`);
 
     // 1. Validate authentication (handled by AuthGuard)
     this.logger.debug(`[Payment Verification] Step 1: Authentication validated (userId: ${userId})`);
 
+    // Validate that at least one identifier is provided
+    if (!paymentId && !id_get && !trans_id) {
+      throw new BadRequestException({
+        success: false,
+        message: 'شناسه پرداخت یا شناسه تراکنش BitPay الزامی است',
+        error: 'PAYMENT_ID_OR_TRANSACTION_ID_REQUIRED',
+      });
+    }
+
     // 2. Retrieve payment record
     this.logger.debug(`[Payment Verification] Step 2: Fetching payment record from database`);
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-      include: {
-        event: {
-          select: {
-            id: true,
-            title: true,
-            name: true,
+    
+    let payment;
+    
+    // If paymentId is provided, use it directly
+    if (paymentId) {
+      payment = await this.prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: {
+          event: {
+            select: {
+              id: true,
+              title: true,
+              name: true,
+            },
           },
         },
-      },
-    });
+      });
+    } 
+    // If paymentId is missing but id_get/trans_id are provided, find by transaction ID
+    else if (id_get || trans_id) {
+      this.logger.debug(`[Payment Verification] Step 2: paymentId missing, finding payment by BitPay transaction ID`);
+      const transactionId = id_get || trans_id;
+      const foundPayment = await this.findPaymentByBitPayTransactionId(transactionId);
+      
+      if (foundPayment) {
+        // Fetch full payment details with event
+        payment = await this.prisma.payment.findUnique({
+          where: { id: foundPayment.id },
+          include: {
+            event: {
+              select: {
+                id: true,
+                title: true,
+                name: true,
+              },
+            },
+          },
+        });
+        this.logger.log(`[Payment Verification] Step 2: Found payment by transaction ID: ${payment.id}`);
+      }
+    }
 
     if (!payment) {
-      this.logger.error(`[Payment Verification] Step 2: Payment not found: ${paymentId}`);
+      this.logger.error(`[Payment Verification] Step 2: Payment not found`);
+      const identifier = paymentId || id_get || trans_id || 'N/A';
       throw new NotFoundException({
         success: false,
         message: 'پرداخت یافت نشد',
