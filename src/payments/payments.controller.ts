@@ -74,8 +74,81 @@ export class PaymentsController {
     console.log(`[Payment Controller] Callback params - paymentId: ${paymentId || 'N/A'}, id_get: ${id_get || 'N/A'}, trans_id: ${trans_id || 'N/A'}, status: ${status || 'N/A'}`);
     console.log(`[Payment Controller] Full query params:`, JSON.stringify(query));
     
-    // This will be handled by the frontend, but we can also return redirect info
-    // The frontend should call the verify endpoint with these parameters
+    // If we have id_get but no paymentId, try to find payment by BitPay transaction ID
+    if (id_get && !paymentId) {
+      console.log(`[Payment Controller] Looking up payment by BitPay transaction ID: ${id_get}`);
+      const payment = await this.paymentsService.findPaymentByBitPayTransactionId(id_get);
+      if (payment) {
+        console.log(`[Payment Controller] Found payment: ${payment.id}, attempting automatic verification`);
+        // Automatically verify the payment
+        try {
+          if (trans_id) {
+            const verifyResult = await this.paymentsService.verifyPaymentByBitPay(
+              payment.id,
+              id_get,
+              trans_id
+            );
+            console.log(`[Payment Controller] Verification result:`, JSON.stringify(verifyResult));
+            return verifyResult;
+          } else {
+            console.log(`[Payment Controller] trans_id missing, returning payment info for frontend verification`);
+            return {
+              success: true,
+              paymentId: payment.id,
+              id_get,
+              trans_id,
+              status,
+              message: 'Please verify payment using the verify endpoint',
+            };
+          }
+        } catch (error) {
+          console.error(`[Payment Controller] Error during automatic verification:`, error);
+          return {
+            success: false,
+            message: 'خطا در تأیید پرداخت',
+            error: error.message,
+            paymentId: payment.id,
+            id_get,
+            trans_id,
+          };
+        }
+      } else {
+        console.warn(`[Payment Controller] Payment not found for BitPay transaction ID: ${id_get}`);
+        return {
+          success: false,
+          message: 'شناسه پرداخت یافت نشد',
+          error: 'PAYMENT_NOT_FOUND',
+          id_get,
+        };
+      }
+    }
+    
+    // If paymentId is provided, return it for frontend to verify
+    // Or if we have all required parameters, try to verify
+    if (paymentId && id_get && trans_id) {
+      console.log(`[Payment Controller] All parameters present, attempting automatic verification`);
+      try {
+        const verifyResult = await this.paymentsService.verifyPaymentByBitPay(
+          paymentId,
+          id_get,
+          trans_id
+        );
+        console.log(`[Payment Controller] Verification result:`, JSON.stringify(verifyResult));
+        return verifyResult;
+      } catch (error) {
+        console.error(`[Payment Controller] Error during automatic verification:`, error);
+        return {
+          success: false,
+          message: 'خطا در تأیید پرداخت',
+          error: error.message,
+          paymentId,
+          id_get,
+          trans_id,
+        };
+      }
+    }
+    
+    // Fallback: return parameters for frontend to verify
     return {
       success: true,
       message: 'Please verify payment using the verify endpoint',

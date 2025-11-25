@@ -124,10 +124,18 @@ export class PaymentGatewayService {
       
       this.logger.debug(`[BitPay] Selected URL: ${bitpayUrl}`);
       
-      // Ensure amount is an integer (BitPay requires Rials, no decimals)
-      const amount = Math.floor(request.amount);
+      // BitPay expects amounts in Tomans, not Rials!
+      // Convert Rials to Tomans (divide by 10)
+      // 1 Toman = 10 Rials
+      const amountInRials = Math.floor(request.amount);
+      const amountInTomans = Math.floor(amountInRials / 10);
       
-      this.logger.log(`[BitPay] Preparing payment: ${amount} IRR`);
+      // BitPay minimum is 500 Tomans (5000 Rials)
+      if (amountInTomans < 500) {
+        throw new Error(`Amount too low: ${amountInTomans} Tomans (${amountInRials} Rials). Minimum: 500 Tomans (5000 Rials)`);
+      }
+      
+      this.logger.log(`[BitPay] Preparing payment: ${amountInTomans} Tomans (${amountInRials} Rials)`);
       this.logger.debug(`[BitPay] URL: ${bitpayUrl}`);
       this.logger.debug(`[BitPay] Callback URL: ${request.callbackUrl}`);
       this.logger.debug(`[BitPay] API Key: ${apiKey.substring(0, 10)}...`);
@@ -135,16 +143,16 @@ export class PaymentGatewayService {
       // Generate a temporary authority for tracking
       const authority = this.generateAuthority();
       
-      // Prepare form data for BitPay
+      // Prepare form data for BitPay - use Tomans, not Rials
       const factorId = request.metadata?.paymentId || request.metadata?.eventId || authority;
       const formDataToSend = new URLSearchParams();
       formDataToSend.append('api', apiKey);
-      formDataToSend.append('amount', amount.toString());
+      formDataToSend.append('amount', amountInTomans.toString()); // Send Tomans to BitPay
       formDataToSend.append('redirect', request.callbackUrl);
       formDataToSend.append('factorId', factorId);
       
       this.logger.log(`[BitPay] Calling BitPay gateway-send server-side: ${bitpayUrl}`);
-      this.logger.debug(`[BitPay] Request data: api=${apiKey.substring(0, 10)}..., amount=${amount}, redirect=${request.callbackUrl}, factorId=${factorId}`);
+      this.logger.debug(`[BitPay] Request data: api=${apiKey.substring(0, 10)}..., amount=${amountInTomans} Tomans (${amountInRials} Rials), redirect=${request.callbackUrl}, factorId=${factorId}`);
       
       // Call BitPay server-side to get transaction ID
       const response = await axios.post(bitpayUrl, formDataToSend, {
@@ -179,7 +187,7 @@ export class PaymentGatewayService {
         id_get: transactionId, // Also include as id_get for compatibility
         formData: {
           api: apiKey,
-          amount: amount.toString(), // Must be string, integer value
+          amount: amountInTomans.toString(), // Send Tomans to BitPay (not Rials)
           redirect: request.callbackUrl,
           factorId: factorId,
         },

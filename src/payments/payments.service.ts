@@ -203,6 +203,23 @@ export class PaymentsService {
               });
               
               this.logger.log(`[Payment Initiation] Step 5: ✅ Got fresh transaction ID from BitPay: ${gatewayResponse.transactionId || gatewayResponse.id_get}`);
+              
+              // Store BitPay transaction ID in payment metadata
+              if (gatewayResponse.transactionId || gatewayResponse.id_get) {
+                const metadata: any = existingPayment.metadata || {};
+                metadata.bitpayTransactionId = gatewayResponse.transactionId || gatewayResponse.id_get;
+                metadata.bitpayIdGet = gatewayResponse.id_get || gatewayResponse.transactionId;
+                
+                await this.prisma.payment.update({
+                  where: { id: existingPayment.id },
+                  data: {
+                    metadata,
+                    paymentUrl: gatewayResponse.paymentUrl,
+                  },
+                });
+                
+                this.logger.debug(`[Payment Initiation] Step 5: Stored BitPay transaction ID in payment metadata: ${metadata.bitpayIdGet}`);
+              }
             } catch (error) {
               this.logger.error(`[Payment Initiation] Step 5: Failed to get transaction ID from BitPay: ${error.message}`);
               // Continue with existing payment data if gateway call fails
@@ -325,12 +342,21 @@ export class PaymentsService {
       const gatewayName = process.env.PAYMENT_GATEWAY_NAME || 'zarinpal';
       this.logger.log(`[Payment Initiation] Step 8: Gateway name: ${gatewayName}`);
       
+      // Store BitPay transaction ID in metadata for lookup during callback
+      const metadata: any = payment.metadata || {};
+      if (gatewayResponse.transactionId || gatewayResponse.id_get) {
+        metadata.bitpayTransactionId = gatewayResponse.transactionId || gatewayResponse.id_get;
+        metadata.bitpayIdGet = gatewayResponse.id_get || gatewayResponse.transactionId;
+        this.logger.debug(`[Payment Initiation] Step 8: Storing BitPay transaction ID: ${metadata.bitpayIdGet}`);
+      }
+      
       const updatedPayment = await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
           gateway: gatewayName,
           authority: gatewayResponse.authority,
           paymentUrl: gatewayResponse.paymentUrl,
+          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         },
       });
 
@@ -626,6 +652,141 @@ export class PaymentsService {
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  /**
+   * Find payment by BitPay transaction ID
+   * Used when BitPay redirects back with id_get but no paymentId
+   */
+  async findPaymentByBitPayTransactionId(bitpayTransactionId: string) {
+    this.logger.debug(`[Payment Lookup] Searching for payment with BitPay transaction ID: ${bitpayTransactionId}`);
+    
+    // Search in metadata for BitPay transaction ID
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        gateway: 'bitpay',
+        status: PaymentStatus.PENDING,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    
+    // Filter payments that have matching BitPay transaction ID in metadata
+    for (const payment of payments) {
+      const metadata = payment.metadata as any;
+      if (metadata) {
+        if (metadata.bitpayTransactionId === bitpayTransactionId || 
+            metadata.bitpayIdGet === bitpayTransactionId) {
+          this.logger.log(`[Payment Lookup] Found payment: ${payment.id} for BitPay transaction ID: ${bitpayTransactionId}`);
+          return payment;
+        }
+      }
+    }
+    
+    this.logger.warn(`[Payment Lookup] No payment found for BitPay transaction ID: ${bitpayTransactionId}`);
+    return null;
+  }
+
+  /**
+   * Verify payment using BitPay parameters (public method, doesn't require userId)
+   * Used by the callback endpoint
+   */
+  async verifyPaymentByBitPay(paymentId: string, id_get: string, trans_id: string) {
+    this.logger.log(`[Payment Verification (BitPay)] Starting verification for paymentId: ${paymentId}, id_get: ${id_get}, trans_id: ${trans_id}`);
+    
+    // Get payment first
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            name: true,
+          },
+        },
+      },
+    });
+    
+    if (!payment) {
+      this.logger.error(`[Payment Verification (BitPay)] Payment not found: ${paymentId}`);
+      throw new NotFoundException({
+        success: false,
+        message: 'پرداخت یافت نشد',
+        error: 'PAYMENT_NOT_FOUND',
+      });
+    }
+    
+    this.logger.log(`[Payment Verification (BitPay)] Payment found - Status: ${payment.status}, Amount: ${payment.amount.toNumber()} ${payment.currency}`);
+    
+    // Check if already completed
+    if (payment.status === PaymentStatus.COMPLETED) {
+      this.logger.log(`[Payment Verification (BitPay)] Payment already completed`);
+      return {
+        success: true,
+        paymentId: payment.id,
+        status: 'completed',
+        refId: payment.refId,
+        amount: payment.amount.toNumber(),
+        currency: payment.currency,
+        paidAt: payment.paidAt,
+        message: 'پرداخت قبلاً انجام شده است',
+      };
+    }
+    
+    // Call gateway verification
+    this.logger.debug(`[Payment Verification (BitPay)] Calling payment gateway service`);
+    const gatewayResponse = await this.paymentGatewayService.verifyPayment({
+      authority: payment.authority || '',
+      amount: payment.amount.toNumber(),
+      id_get,
+      trans_id,
+    });
+    
+    this.logger.log(`[Payment Verification (BitPay)] Gateway response - Success: ${gatewayResponse.success}, Status: ${gatewayResponse.status}`);
+    
+    // Update payment status
+    if (gatewayResponse.success && gatewayResponse.status === 'OK') {
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: PaymentStatus.COMPLETED,
+          refId: gatewayResponse.refId,
+          paidAt: new Date(),
+        },
+      });
+      
+      this.logger.log(`[Payment Verification (BitPay)] ✅ Payment verified and updated to COMPLETED`);
+      
+      return {
+        success: true,
+        paymentId: payment.id,
+        status: 'completed',
+        refId: gatewayResponse.refId,
+        amount: payment.amount.toNumber(),
+        currency: payment.currency,
+        paidAt: new Date(),
+        message: gatewayResponse.message || 'پرداخت با موفقیت انجام شد',
+      };
+    } else {
+      // Update payment status to failed
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: PaymentStatus.FAILED,
+        },
+      });
+      
+      this.logger.warn(`[Payment Verification (BitPay)] ❌ Payment verification failed`);
+      
+      return {
+        success: false,
+        paymentId: payment.id,
+        status: 'failed',
+        message: gatewayResponse.message || 'پرداخت انجام نشد',
+      };
     }
   }
 }
