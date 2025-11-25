@@ -8,10 +8,19 @@ export class VerifyPaymentDto {
 
   @IsOptional()
   @IsString()
-  authority?: string; // Gateway transaction ID
+  authority?: string; // Gateway transaction ID (Zarinpal)
 
   @IsOptional()
   @IsString()
   status?: string; // "OK" or "NOK" from gateway
+
+  // BitPay specific fields
+  @IsOptional()
+  @IsString()
+  id_get?: string; // BitPay transaction ID
+
+  @IsOptional()
+  @IsString()
+  trans_id?: string; // BitPay transaction ID
 }
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 
 interface PaymentRequest {
   amount: number;
@@ -12,11 +13,16 @@ interface PaymentResponse {
   authority: string;
   paymentUrl?: string;
   message?: string;
+  // BitPay specific fields
+  formData?: Record<string, string>; // For BitPay form submission
 }
 
 interface VerificationRequest {
   authority: string;
   amount: number;
+  // BitPay specific fields
+  id_get?: string;
+  trans_id?: string;
 }
 
 interface VerificationResponse {
@@ -38,15 +44,24 @@ export class PaymentGatewayService {
    * @returns Payment response with authority and payment URL
    */
   async initiatePayment(request: PaymentRequest): Promise<PaymentResponse> {
+    this.logger.log(`[Gateway] Initiating payment - Amount: ${request.amount} ${request.description ? `(${request.description})` : ''}`);
+    this.logger.debug(`[Gateway] Mock mode: ${this.mockMode}, Gateway: ${this.gatewayName}`);
+    
     if (this.mockMode) {
+      this.logger.warn(`[Gateway] Using MOCK mode for payment initiation`);
       return this.initiateMockPayment(request);
     }
 
-    // TODO: Implement real payment gateway integration (Zarinpal, etc.)
-    // Example:
-    // return this.initiateRealPayment(request);
+    // Route to appropriate gateway based on configuration
+    if (this.gatewayName === 'bitpay') {
+      this.logger.log(`[Gateway] Routing to BitPay gateway`);
+      return this.initiateBitPayPayment(request);
+    } else if (this.gatewayName === 'zarinpal') {
+      this.logger.log(`[Gateway] Routing to Zarinpal gateway`);
+      return this.initiateZarinpalPayment(request);
+    }
     
-    this.logger.warn('Real payment gateway not implemented yet, falling back to mock');
+    this.logger.warn(`[Gateway] Unknown gateway: ${this.gatewayName}, falling back to mock`);
     return this.initiateMockPayment(request);
   }
 
@@ -56,15 +71,182 @@ export class PaymentGatewayService {
    * @returns Verification response with refId and status
    */
   async verifyPayment(request: VerificationRequest): Promise<VerificationResponse> {
+    this.logger.log(`[Gateway] Verifying payment - Amount: ${request.amount}`);
+    this.logger.debug(`[Gateway] Authority: ${request.authority || 'N/A'}, id_get: ${request.id_get || 'N/A'}, trans_id: ${request.trans_id || 'N/A'}`);
+    this.logger.debug(`[Gateway] Mock mode: ${this.mockMode}, Gateway: ${this.gatewayName}`);
+    
     if (this.mockMode) {
+      this.logger.warn(`[Gateway] Using MOCK mode for payment verification`);
       return this.verifyMockPayment(request);
     }
 
-    // TODO: Implement real payment gateway verification
-    // Example:
-    // return this.verifyRealPayment(request);
+    // Route to appropriate gateway based on configuration
+    if (this.gatewayName === 'bitpay') {
+      this.logger.log(`[Gateway] Routing to BitPay verification`);
+      return this.verifyBitPayPayment(request);
+    } else if (this.gatewayName === 'zarinpal') {
+      this.logger.log(`[Gateway] Routing to Zarinpal verification`);
+      return this.verifyZarinpalPayment(request);
+    }
     
-    this.logger.warn('Real payment gateway verification not implemented yet, falling back to mock');
+    this.logger.warn(`[Gateway] Unknown gateway: ${this.gatewayName}, falling back to mock`);
+    return this.verifyMockPayment(request);
+  }
+
+  /**
+   * Initiate BitPay payment
+   * Note: BitPay requires browser form submission, not server-side API calls
+   * This method prepares the form data for the frontend to submit
+   */
+  private async initiateBitPayPayment(request: PaymentRequest): Promise<PaymentResponse> {
+    try {
+      const apiKey = process.env.BITPAY_API_KEY;
+      const isTest = process.env.BITPAY_TEST_MODE !== 'false'; // Default to test mode
+      
+      if (!apiKey) {
+        throw new Error('BITPAY_API_KEY is not configured');
+      }
+
+      if (!request.callbackUrl) {
+        throw new Error('Callback URL is required for BitPay');
+      }
+
+      const bitpayUrl = isTest 
+        ? 'https://bitpay.ir/payment-test/gateway-send'
+        : 'https://bitpay.ir/payment/gateway-send';
+      
+      // Ensure amount is an integer (BitPay requires Rials, no decimals)
+      const amount = Math.floor(request.amount);
+      
+      this.logger.log(`[BitPay] Preparing payment: ${amount} IRR`);
+      this.logger.debug(`[BitPay] URL: ${bitpayUrl}`);
+      this.logger.debug(`[BitPay] Callback URL: ${request.callbackUrl}`);
+      this.logger.debug(`[BitPay] API Key: ${apiKey.substring(0, 10)}...`);
+      
+      // Generate a temporary authority for tracking
+      const authority = this.generateAuthority();
+      
+      // Return form data for frontend to submit
+      // DO NOT make server-side API call - BitPay expects browser form submission
+      // The frontend will create a form and submit it directly to BitPay
+      return {
+        success: true,
+        authority,
+        paymentUrl: bitpayUrl,
+        formData: {
+          api: apiKey,
+          amount: amount.toString(), // Must be string, integer value
+          redirect: request.callbackUrl,
+        },
+        message: 'در حال انتقال به درگاه پرداخت...',
+      };
+    } catch (error) {
+      this.logger.error(`[BitPay] Error preparing payment: ${error.message}`);
+      throw new Error(`BitPay payment preparation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify BitPay payment
+   */
+  private async verifyBitPayPayment(request: VerificationRequest): Promise<VerificationResponse> {
+    try {
+      const apiKey = process.env.BITPAY_API_KEY;
+      const isTest = process.env.BITPAY_TEST_MODE !== 'false';
+      
+      if (!apiKey) {
+        throw new Error('BITPAY_API_KEY is not configured');
+      }
+
+      if (!request.id_get || !request.trans_id) {
+        throw new Error('BitPay verification requires id_get and trans_id');
+      }
+
+      const bitpayUrl = isTest 
+        ? 'https://bitpay.ir/payment-test/gateway-result-second'
+        : 'https://bitpay.ir/payment/gateway-result-second';
+      
+      this.logger.log(`[BitPay] Verifying payment: id_get=${request.id_get}, trans_id=${request.trans_id}`);
+      
+      const formData = new URLSearchParams();
+      formData.append('api', apiKey);
+      formData.append('id_get', request.id_get);
+      formData.append('trans_id', request.trans_id);
+      formData.append('json', '1'); // Request JSON response
+      
+      this.logger.debug(`[BitPay Verification] Request URL: ${bitpayUrl}`);
+      this.logger.debug(`[BitPay Verification] Request parameters: id_get=${request.id_get}, trans_id=${request.trans_id}`);
+      this.logger.debug(`[BitPay Verification] Making POST request to BitPay API...`);
+      
+      const response = await axios.post(bitpayUrl, formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+      
+      this.logger.log(`[BitPay Verification] Response received - Status Code: ${response.status}`);
+      this.logger.debug(`[BitPay Verification] Full response: ${JSON.stringify(response.data)}`);
+      
+      // Parse BitPay response
+      // BitPay typically returns: { status: 1 or 0, message: "...", ... }
+      const responseData = response.data;
+      const status = responseData.status;
+      
+      this.logger.debug(`[BitPay Verification] Parsed status: ${status} (type: ${typeof status})`);
+      this.logger.debug(`[BitPay Verification] Response message: ${responseData.message || 'N/A'}`);
+      
+      // BitPay uses status: 1 for success, 0 or other for failure
+      if (status === 1 || status === '1' || responseData.status === 'OK') {
+        this.logger.log(`[BitPay Verification] ✅ Payment verified successfully by BitPay`);
+        const refId = request.trans_id || request.id_get;
+        
+        this.logger.log(`[BitPay] Payment verified successfully. RefId: ${refId}`);
+        
+        this.logger.log(`[BitPay Verification] RefId: ${refId}`);
+        
+        return {
+          success: true,
+          refId: refId.toString(),
+          status: 'OK',
+          message: responseData.message || 'پرداخت با موفقیت انجام شد',
+        };
+      } else {
+        this.logger.warn(`[BitPay Verification] ❌ Payment verification failed. Status: ${status}`);
+        this.logger.warn(`[BitPay Verification] Failure message: ${responseData.message || 'N/A'}`);
+        
+        return {
+          success: false,
+          status: 'NOK',
+          message: responseData.message || 'پرداخت انجام نشد',
+        };
+      }
+    } catch (error) {
+      this.logger.error(`[BitPay] Error verifying payment: ${error.message}`);
+      if (axios.isAxiosError(error)) {
+        this.logger.error(`[BitPay] Response status: ${error.response?.status}`);
+        this.logger.error(`[BitPay] Response data: ${JSON.stringify(error.response?.data)}`);
+      }
+      return {
+        success: false,
+        status: 'NOK',
+        message: 'خطا در ارتباط با درگاه پرداخت',
+      };
+    }
+  }
+
+  /**
+   * Initiate Zarinpal payment (placeholder for future implementation)
+   */
+  private async initiateZarinpalPayment(request: PaymentRequest): Promise<PaymentResponse> {
+    this.logger.warn('Zarinpal payment not yet implemented, falling back to mock');
+    return this.initiateMockPayment(request);
+  }
+
+  /**
+   * Verify Zarinpal payment (placeholder for future implementation)
+   */
+  private async verifyZarinpalPayment(request: VerificationRequest): Promise<VerificationResponse> {
+    this.logger.warn('Zarinpal verification not yet implemented, falling back to mock');
     return this.verifyMockPayment(request);
   }
 

@@ -63,6 +63,14 @@ services:
       OTP_CODE_LENGTH: '4'
       OTP_EXPIRES_IN: '300'
       OTP_MAX_ATTEMPTS: '3'
+      # Payment Gateway Configuration
+      PAYMENT_GATEWAY_NAME: bitpay
+      PAYMENT_GATEWAY_MOCK: 'false'
+      BITPAY_API_KEY: 6f198-ef733-458ae-3f70b-b0e0b373ab187f416f6d45da1a79
+      BITPAY_TEST_MODE: 'true'
+      PAYMENT_CALLBACK_URL: http://veventexpo.ir/payment/result
+      DEFAULT_EVENT_PRICE: '150000'
+      PAYMENT_CURRENCY: IRR
     ports:
       - "3001:3001"
     depends_on:

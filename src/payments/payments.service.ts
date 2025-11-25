@@ -26,11 +26,16 @@ export class PaymentsService {
   async initiatePayment(userId: string, dto: InitiatePaymentDto) {
     const { eventId } = dto;
 
+    this.logger.log(`[Payment Initiation] Starting payment process for userId: ${userId}, eventId: ${eventId}`);
+
     // 1. Validate authentication (handled by AuthGuard)
+    this.logger.debug(`[Payment Initiation] Step 1: Authentication validated (userId: ${userId})`);
 
     // 2. Validate input (handled by DTO decorators)
+    this.logger.debug(`[Payment Initiation] Step 2: Input validated (eventId: ${eventId})`);
 
     // 3. Verify event exists
+    this.logger.debug(`[Payment Initiation] Step 3: Fetching event from database`);
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: {
@@ -43,6 +48,7 @@ export class PaymentsService {
     });
 
     if (!event) {
+      this.logger.error(`[Payment Initiation] Event not found: ${eventId}`);
       throw new NotFoundException({
         success: false,
         message: 'رویداد یافت نشد',
@@ -50,7 +56,10 @@ export class PaymentsService {
       });
     }
 
+    this.logger.log(`[Payment Initiation] Step 3: Event found - ${event.title} (${event.name})`);
+
     // 4. Verify user has registered for this event (or auto-register if not)
+    this.logger.debug(`[Payment Initiation] Step 4: Checking if user is registered for event`);
     let attendee = await this.prisma.attendee.findFirst({
       where: {
         eventId,
@@ -60,6 +69,7 @@ export class PaymentsService {
 
     // If not registered, auto-register the user
     if (!attendee) {
+      this.logger.log(`[Payment Initiation] Step 4: User not registered, auto-registering...`);
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -95,7 +105,8 @@ export class PaymentsService {
         },
       });
 
-      this.logger.log(`Auto-registered user ${userId} for event ${eventId} during payment initiation`);
+      this.logger.log(`[Payment Initiation] Step 4: Auto-registered user ${userId} for event ${eventId}`);
+      this.logger.debug(`[Payment Initiation] Attendee ID: ${attendee.id}`);
       
       // Notify event owner of new registration
       try {
@@ -112,9 +123,12 @@ export class PaymentsService {
         // Swallow notification errors
         this.logger.warn('Failed to notify event owner', err);
       }
+    } else {
+      this.logger.debug(`[Payment Initiation] Step 4: User already registered (attendeeId: ${attendee.id})`);
     }
 
     // 5. Check existing payment
+    this.logger.debug(`[Payment Initiation] Step 5: Checking for existing payments`);
     const existingPayment = await this.prisma.payment.findFirst({
       where: {
         userId,
@@ -126,7 +140,10 @@ export class PaymentsService {
     });
 
     if (existingPayment) {
+      this.logger.log(`[Payment Initiation] Step 5: Found existing payment (ID: ${existingPayment.id}, Status: ${existingPayment.status})`);
+      
       if (existingPayment.status === PaymentStatus.COMPLETED) {
+        this.logger.warn(`[Payment Initiation] Payment already completed - rejecting new payment request`);
         throw new ConflictException({
           success: false,
           message: 'پرداخت شما برای این رویداد قبلاً انجام شده است',
@@ -136,8 +153,45 @@ export class PaymentsService {
       }
 
       if (existingPayment.status === PaymentStatus.PENDING) {
+        this.logger.log(`[Payment Initiation] Step 5: Returning existing pending payment`);
+        
+        // Regenerate formData for BitPay if needed
+        let formData = null;
+        if (existingPayment.gateway === 'bitpay' && existingPayment.paymentUrl) {
+          this.logger.debug(`[Payment Initiation] Step 5: Regenerating BitPay formData for existing payment`);
+          const apiKey = process.env.BITPAY_API_KEY;
+          
+          // Construct callback URL (same logic as new payments)
+          const callbackUrl = process.env.PAYMENT_CALLBACK_URL 
+            ? `${process.env.PAYMENT_CALLBACK_URL}?paymentId=${existingPayment.id}`
+            : undefined;
+          
+          if (!callbackUrl) {
+            this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured, using default`);
+          }
+          
+          if (apiKey && callbackUrl) {
+            // Ensure amount is an integer (BitPay requires Rials, no decimals)
+            const amount = Math.floor(existingPayment.amount.toNumber());
+            
+            formData = {
+              api: apiKey,
+              amount: amount.toString(), // Must be string, integer value
+              redirect: callbackUrl,
+            };
+            this.logger.debug(`[Payment Initiation] Step 5: BitPay formData regenerated (amount: ${amount}, callback: ${callbackUrl})`);
+          } else {
+            if (!apiKey) {
+              this.logger.warn(`[Payment Initiation] Step 5: BITPAY_API_KEY not found, cannot regenerate formData`);
+            }
+            if (!callbackUrl) {
+              this.logger.warn(`[Payment Initiation] Step 5: Callback URL not configured, cannot regenerate formData`);
+            }
+          }
+        }
+        
         // Return existing pending payment
-        return {
+        const response: any = {
           success: true,
           paymentId: existingPayment.id,
           paymentUrl: existingPayment.paymentUrl,
@@ -148,14 +202,25 @@ export class PaymentsService {
           authority: existingPayment.authority,
           message: 'در حال انتقال به درگاه پرداخت...',
         };
+        
+        // Add formData if available (required for BitPay)
+        if (formData) {
+          response.formData = formData;
+          this.logger.debug(`[Payment Initiation] Step 5: Added formData to response`);
+        }
+        
+        return response;
       }
     }
 
     // 6. Calculate payment amount
     // For now, use default price. In the future, this can come from event metadata
+    this.logger.debug(`[Payment Initiation] Step 6: Calculating payment amount`);
     const amount = this.defaultEventPrice;
+    this.logger.log(`[Payment Initiation] Step 6: Payment amount: ${amount} ${this.currency}`);
 
     // 7. Create payment record
+    this.logger.debug(`[Payment Initiation] Step 7: Creating payment record in database`);
     const payment = await this.prisma.payment.create({
       data: {
         userId,
@@ -167,11 +232,17 @@ export class PaymentsService {
       },
     });
 
+    this.logger.log(`[Payment Initiation] Step 7: Payment record created (ID: ${payment.id})`);
+
     // 8. Initiate payment gateway
+    this.logger.debug(`[Payment Initiation] Step 8: Initiating payment gateway`);
     try {
       const callbackUrl = process.env.PAYMENT_CALLBACK_URL 
         ? `${process.env.PAYMENT_CALLBACK_URL}?paymentId=${payment.id}`
         : undefined;
+
+      this.logger.log(`[Payment Initiation] Step 8: Callback URL: ${callbackUrl}`);
+      this.logger.debug(`[Payment Initiation] Step 8: Calling payment gateway service`);
 
       const gatewayResponse = await this.paymentGatewayService.initiatePayment({
         amount,
@@ -186,7 +257,17 @@ export class PaymentsService {
         },
       });
 
+      this.logger.log(`[Payment Initiation] Step 8: Gateway response received`);
+      this.logger.debug(`[Payment Initiation] Gateway success: ${gatewayResponse.success}`);
+      this.logger.debug(`[Payment Initiation] Gateway authority: ${gatewayResponse.authority}`);
+      this.logger.debug(`[Payment Initiation] Gateway paymentUrl: ${gatewayResponse.paymentUrl}`);
+      if (gatewayResponse.formData) {
+        this.logger.debug(`[Payment Initiation] Gateway formData keys: ${Object.keys(gatewayResponse.formData).join(', ')}`);
+      }
+
       if (!gatewayResponse.success || !gatewayResponse.authority) {
+        this.logger.error(`[Payment Initiation] Step 8: Gateway initiation failed`);
+        this.logger.error(`[Payment Initiation] Gateway message: ${gatewayResponse.message}`);
         // Update payment status to failed
         await this.prisma.payment.update({
           where: { id: payment.id },
@@ -209,17 +290,24 @@ export class PaymentsService {
       }
 
       // Update payment with gateway information
+      this.logger.debug(`[Payment Initiation] Step 8: Updating payment with gateway information`);
+      const gatewayName = process.env.PAYMENT_GATEWAY_NAME || 'zarinpal';
+      this.logger.log(`[Payment Initiation] Step 8: Gateway name: ${gatewayName}`);
+      
       const updatedPayment = await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
-          gateway: 'zarinpal', // or from env
+          gateway: gatewayName,
           authority: gatewayResponse.authority,
           paymentUrl: gatewayResponse.paymentUrl,
         },
       });
 
+      this.logger.log(`[Payment Initiation] Step 8: Payment updated with gateway info (authority: ${updatedPayment.authority})`);
+
       // 9. Return payment response
-      return {
+      this.logger.debug(`[Payment Initiation] Step 9: Preparing response`);
+      const response: any = {
         success: true,
         paymentId: updatedPayment.id,
         paymentUrl: updatedPayment.paymentUrl,
@@ -230,14 +318,27 @@ export class PaymentsService {
         authority: updatedPayment.authority,
         message: 'در حال انتقال به درگاه پرداخت...',
       };
+
+      // Add BitPay form data if available (for frontend form submission)
+      if (gatewayResponse.formData) {
+        response.formData = gatewayResponse.formData;
+        this.logger.debug(`[Payment Initiation] Step 9: Added formData to response`);
+      }
+
+      this.logger.log(`[Payment Initiation] ✅ Payment initiation completed successfully`);
+      this.logger.log(`[Payment Initiation] Payment ID: ${response.paymentId}, Gateway: ${response.gateway}, Amount: ${response.amount} ${response.currency}`);
+      
+      return response;
     } catch (error) {
       // If error is already an HttpException, rethrow it
       if (error instanceof HttpException) {
+        this.logger.error(`[Payment Initiation] ❌ HttpException: ${error.message}`);
         throw error;
       }
 
       // Log and handle unexpected errors
-      this.logger.error(`Error initiating payment: ${error.message}`);
+      this.logger.error(`[Payment Initiation] ❌ Unexpected error: ${error.message}`);
+      this.logger.error(`[Payment Initiation] Error stack: ${error.stack}`);
       throw new HttpException(
         {
           success: false,
@@ -256,11 +357,16 @@ export class PaymentsService {
    * @returns Verification response with payment status
    */
   async verifyPayment(userId: string, dto: VerifyPaymentDto) {
-    const { paymentId, authority, status: gatewayStatus } = dto;
+    const { paymentId, authority, status: gatewayStatus, id_get, trans_id } = dto;
+
+    this.logger.log(`[Payment Verification] Starting verification for userId: ${userId}, paymentId: ${paymentId}`);
+    this.logger.debug(`[Payment Verification] Parameters - authority: ${authority || 'N/A'}, id_get: ${id_get || 'N/A'}, trans_id: ${trans_id || 'N/A'}, gatewayStatus: ${gatewayStatus || 'N/A'}`);
 
     // 1. Validate authentication (handled by AuthGuard)
+    this.logger.debug(`[Payment Verification] Step 1: Authentication validated (userId: ${userId})`);
 
     // 2. Retrieve payment record
+    this.logger.debug(`[Payment Verification] Step 2: Fetching payment record from database`);
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
@@ -275,6 +381,7 @@ export class PaymentsService {
     });
 
     if (!payment) {
+      this.logger.error(`[Payment Verification] Step 2: Payment not found: ${paymentId}`);
       throw new NotFoundException({
         success: false,
         message: 'پرداخت یافت نشد',
@@ -282,8 +389,12 @@ export class PaymentsService {
       });
     }
 
+    this.logger.log(`[Payment Verification] Step 2: Payment found - Status: ${payment.status}, Amount: ${payment.amount.toNumber()} ${payment.currency}, Gateway: ${payment.gateway || 'N/A'}`);
+
     // 3. Verify payment belongs to authenticated user
+    this.logger.debug(`[Payment Verification] Step 3: Verifying payment ownership`);
     if (payment.userId !== userId) {
+      this.logger.warn(`[Payment Verification] Step 3: Access denied - Payment userId (${payment.userId}) does not match authenticated userId (${userId})`);
       throw new BadRequestException({
         success: false,
         message: 'شما دسترسی به این پرداخت ندارید',
@@ -291,8 +402,12 @@ export class PaymentsService {
       });
     }
 
+    this.logger.debug(`[Payment Verification] Step 3: Payment ownership verified`);
+
     // 4. Check if already completed
+    this.logger.debug(`[Payment Verification] Step 4: Checking payment status`);
     if (payment.status === PaymentStatus.COMPLETED) {
+      this.logger.log(`[Payment Verification] Step 4: Payment already completed - returning existing status`);
       return {
         success: true,
         paymentId: payment.id,
@@ -306,25 +421,63 @@ export class PaymentsService {
     }
 
     // 5. Verify with payment gateway
+    this.logger.debug(`[Payment Verification] Step 5: Starting gateway verification`);
     try {
-      // Use provided authority or payment's authority
-      const authorityToVerify = authority || payment.authority;
+      // Determine which gateway is being used
+      const gateway = payment.gateway || process.env.PAYMENT_GATEWAY_NAME || 'zarinpal';
+      this.logger.log(`[Payment Verification] Step 5: Gateway: ${gateway}`);
       
-      if (!authorityToVerify) {
-        throw new BadRequestException({
-          success: false,
-          message: 'شناسه تراکنش یافت نشد',
-          error: 'AUTHORITY_NOT_FOUND',
+      let verificationResponse;
+      
+      if (gateway === 'bitpay') {
+        this.logger.debug(`[Payment Verification] Step 5: Using BitPay verification`);
+        // BitPay verification requires id_get and trans_id
+        if (!id_get || !trans_id) {
+          this.logger.error(`[Payment Verification] Step 5: BitPay verification failed - missing id_get or trans_id`);
+          throw new BadRequestException({
+            success: false,
+            message: 'شناسه تراکنش BitPay یافت نشد (id_get و trans_id الزامی است)',
+            error: 'BITPAY_TRANSACTION_ID_NOT_FOUND',
+          });
+        }
+
+        this.logger.debug(`[Payment Verification] Step 5: Calling BitPay verification API`);
+        verificationResponse = await this.paymentGatewayService.verifyPayment({
+          authority: '', // Not used for BitPay
+          amount: payment.amount.toNumber(),
+          id_get,
+          trans_id,
+        });
+      } else {
+        // Zarinpal or other gateways use authority
+        const authorityToVerify = authority || payment.authority;
+        
+        if (!authorityToVerify) {
+          throw new BadRequestException({
+            success: false,
+            message: 'شناسه تراکنش یافت نشد',
+            error: 'AUTHORITY_NOT_FOUND',
+          });
+        }
+
+        this.logger.debug(`[Payment Verification] Step 5: Calling Zarinpal verification API`);
+        this.logger.debug(`[Payment Verification] Step 5: Calling Zarinpal verification API with authority: ${authorityToVerify}`);
+        verificationResponse = await this.paymentGatewayService.verifyPayment({
+          authority: authorityToVerify,
+          amount: payment.amount.toNumber(),
         });
       }
 
-      const verificationResponse = await this.paymentGatewayService.verifyPayment({
-        authority: authorityToVerify,
-        amount: payment.amount.toNumber(),
-      });
+      this.logger.log(`[Payment Verification] Step 5: Gateway verification response received`);
+      this.logger.debug(`[Payment Verification] Verification success: ${verificationResponse.success}`);
+      this.logger.debug(`[Payment Verification] Verification status: ${verificationResponse.status}`);
+      this.logger.debug(`[Payment Verification] Verification refId: ${verificationResponse.refId || 'N/A'}`);
+      this.logger.debug(`[Payment Verification] Verification message: ${verificationResponse.message || 'N/A'}`);
 
       // 6. Update payment status based on gateway response
+      this.logger.debug(`[Payment Verification] Step 6: Processing gateway response`);
       if (verificationResponse.success && verificationResponse.status === 'OK' && verificationResponse.refId) {
+        this.logger.log(`[Payment Verification] Step 6: Payment verified successfully - updating to COMPLETED`);
         // Payment successful
         const updatedPayment = await this.prisma.payment.update({
           where: { id: payment.id },
@@ -339,8 +492,14 @@ export class PaymentsService {
           },
         });
 
+        this.logger.log(`[Payment Verification] Step 6: Payment status updated to COMPLETED (refId: ${updatedPayment.refId})`);
+
         // 7. Get updated user status flags
+        this.logger.debug(`[Payment Verification] Step 7: Fetching user status flags`);
         const statusFlags = await this.usersService.getUserStatusFlags(userId);
+
+        this.logger.log(`[Payment Verification] ✅ Payment verification completed successfully`);
+        this.logger.log(`[Payment Verification] Payment ID: ${updatedPayment.id}, RefId: ${updatedPayment.refId}, Amount: ${updatedPayment.amount.toNumber()} ${updatedPayment.currency}`);
 
         return {
           success: true,
@@ -359,6 +518,9 @@ export class PaymentsService {
         };
       } else {
         // Payment failed
+        this.logger.warn(`[Payment Verification] Step 6: Payment verification failed - updating to FAILED`);
+        this.logger.warn(`[Payment Verification] Failure reason: ${verificationResponse.message || 'Unknown'}`);
+        
         const updatedPayment = await this.prisma.payment.update({
           where: { id: payment.id },
           data: {
@@ -371,6 +533,9 @@ export class PaymentsService {
           },
         });
 
+        this.logger.log(`[Payment Verification] ❌ Payment verification failed`);
+        this.logger.log(`[Payment Verification] Payment ID: ${updatedPayment.id}, Status: ${updatedPayment.status}`);
+
         return {
           success: false,
           paymentId: updatedPayment.id,
@@ -382,11 +547,13 @@ export class PaymentsService {
     } catch (error) {
       // If error is already an HttpException, rethrow it
       if (error instanceof HttpException) {
+        this.logger.error(`[Payment Verification] ❌ HttpException: ${error.message}`);
         throw error;
       }
 
       // Log and handle unexpected errors
-      this.logger.error(`Error verifying payment: ${error.message}`);
+      this.logger.error(`[Payment Verification] ❌ Unexpected error: ${error.message}`);
+      this.logger.error(`[Payment Verification] Error stack: ${error.stack}`);
       
       // Update payment status to failed
       await this.prisma.payment.update({
