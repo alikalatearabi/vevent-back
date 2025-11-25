@@ -67,7 +67,7 @@ services:
       PAYMENT_GATEWAY_NAME: bitpay
       PAYMENT_GATEWAY_MOCK: 'false'
       BITPAY_API_KEY: 6f198-ef733-458ae-3f70b-b0e0b373ab187f416f6d45da1a79
-      BITPAY_TEST_MODE: 'false'
+      BITPAY_TEST_MODE: false
       PAYMENT_CALLBACK_URL: http://veventexpo.ir/payment/result
       DEFAULT_EVENT_PRICE: '150000'
       PAYMENT_CURRENCY: IRR
