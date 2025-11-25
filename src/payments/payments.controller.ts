@@ -81,8 +81,10 @@ export class PaymentsController {
     // If we have id_get but no paymentId, try to find payment by BitPay transaction ID
     if (id_get && !paymentId) {
       console.log(`[Payment Controller] Looking up payment by BitPay transaction ID: ${id_get}`);
+      console.log(`[Payment Controller] Query params received:`, JSON.stringify(query));
       const payment = await this.paymentsService.findPaymentByBitPayTransactionId(id_get);
       if (payment) {
+        console.log(`[Payment Controller] ✅ Payment found: ${payment.id}, status: ${payment.status}`);
         console.log(`[Payment Controller] Found payment: ${payment.id}, attempting automatic verification`);
         // Automatically verify the payment
         try {

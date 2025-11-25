@@ -691,29 +691,73 @@ export class PaymentsService {
     this.logger.debug(`[Payment Lookup] Searching for payment with BitPay transaction ID: ${bitpayTransactionId}`);
     
     // Search in metadata for BitPay transaction ID
+    // Include both PENDING and COMPLETED payments (payment might be completed already)
     const payments = await this.prisma.payment.findMany({
       where: {
         gateway: 'bitpay',
-        status: PaymentStatus.PENDING,
+        status: {
+          in: [PaymentStatus.PENDING, PaymentStatus.COMPLETED],
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
     
+    this.logger.debug(`[Payment Lookup] Found ${payments.length} BitPay payments to check`);
+    
     // Filter payments that have matching BitPay transaction ID in metadata
+    // Also try string comparison in case of type mismatches
+    const searchId = bitpayTransactionId.toString().trim();
     for (const payment of payments) {
       const metadata = payment.metadata as any;
       if (metadata) {
-        if (metadata.bitpayTransactionId === bitpayTransactionId || 
+        const storedTransactionId = metadata.bitpayTransactionId?.toString().trim();
+        const storedIdGet = metadata.bitpayIdGet?.toString().trim();
+        this.logger.debug(`[Payment Lookup] Checking payment ${payment.id} - storedTransactionId: ${storedTransactionId}, storedIdGet: ${storedIdGet}, searching for: ${searchId}`);
+        if (storedTransactionId === searchId || 
+            storedIdGet === searchId ||
+            metadata.bitpayTransactionId === bitpayTransactionId || 
             metadata.bitpayIdGet === bitpayTransactionId) {
-          this.logger.log(`[Payment Lookup] Found payment: ${payment.id} for BitPay transaction ID: ${bitpayTransactionId}`);
+          this.logger.log(`[Payment Lookup] ✅ Found payment: ${payment.id} (status: ${payment.status}) for BitPay transaction ID: ${bitpayTransactionId}`);
           return payment;
+        }
+      } else {
+        this.logger.debug(`[Payment Lookup] Payment ${payment.id} has no metadata`);
+      }
+    }
+    
+    // Fallback: Search all BitPay payments (including FAILED) if not found in PENDING/COMPLETED
+    if (payments.length === 0 || payments.every(p => (p.metadata as any)?.bitpayTransactionId !== searchId && (p.metadata as any)?.bitpayIdGet !== searchId)) {
+      this.logger.debug(`[Payment Lookup] Not found in PENDING/COMPLETED, searching all BitPay payments`);
+      const allPayments = await this.prisma.payment.findMany({
+        where: {
+          gateway: 'bitpay',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 50, // Limit to recent 50 payments
+      });
+      
+      for (const payment of allPayments) {
+        const metadata = payment.metadata as any;
+        if (metadata) {
+          const storedTransactionId = metadata.bitpayTransactionId?.toString().trim();
+          const storedIdGet = metadata.bitpayIdGet?.toString().trim();
+          if (storedTransactionId === searchId || 
+              storedIdGet === searchId ||
+              metadata.bitpayTransactionId === bitpayTransactionId || 
+              metadata.bitpayIdGet === bitpayTransactionId) {
+            this.logger.log(`[Payment Lookup] ✅ Found payment in fallback search: ${payment.id} (status: ${payment.status}) for BitPay transaction ID: ${bitpayTransactionId}`);
+            return payment;
+          }
         }
       }
     }
     
-    this.logger.warn(`[Payment Lookup] No payment found for BitPay transaction ID: ${bitpayTransactionId}`);
+    this.logger.warn(`[Payment Lookup] ❌ No payment found for BitPay transaction ID: ${bitpayTransactionId}`);
+    this.logger.warn(`[Payment Lookup] Searched ${payments.length} payments`);
     return null;
   }
 
