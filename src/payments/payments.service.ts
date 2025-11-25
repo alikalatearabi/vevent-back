@@ -161,21 +161,22 @@ export class PaymentsService {
           this.logger.debug(`[Payment Initiation] Step 5: Regenerating BitPay formData for existing payment`);
           const apiKey = process.env.BITPAY_API_KEY;
           
-          // Determine test/production mode from stored paymentUrl to ensure consistency
-          const storedUrl = existingPayment.paymentUrl;
-          const isTest = storedUrl.includes('/payment-test/');
+          // Use environment variable to determine test/production mode
+          const envIsTest = process.env.BITPAY_TEST_MODE !== 'false';
+          const isTest = envIsTest; // Use environment variable, not stored URL
           const expectedUrl = isTest 
             ? 'https://bitpay.ir/payment-test/gateway-send'
             : 'https://bitpay.ir/payment/gateway-send';
           
-          // Warn if there's a mismatch between stored URL and current environment
-          const envIsTest = process.env.BITPAY_TEST_MODE !== 'false';
-          if (isTest !== envIsTest) {
-            this.logger.warn(`[Payment Initiation] Step 5: ⚠️  WARNING: Payment URL mode (${isTest ? 'TEST' : 'PRODUCTION'}) doesn't match environment (${envIsTest ? 'TEST' : 'PRODUCTION'})`);
-            this.logger.warn(`[Payment Initiation] Step 5: Using payment URL mode: ${isTest ? 'TEST' : 'PRODUCTION'}`);
+          // Warn if stored URL doesn't match current environment
+          const storedUrl = existingPayment.paymentUrl;
+          const storedIsTest = storedUrl?.includes('/payment-test/');
+          if (storedIsTest !== undefined && storedIsTest !== envIsTest) {
+            this.logger.warn(`[Payment Initiation] Step 5: ⚠️  WARNING: Stored payment URL mode (${storedIsTest ? 'TEST' : 'PRODUCTION'}) doesn't match environment (${envIsTest ? 'TEST' : 'PRODUCTION'})`);
+            this.logger.warn(`[Payment Initiation] Step 5: Using environment mode: ${envIsTest ? 'TEST' : 'PRODUCTION'}`);
           }
           
-          this.logger.debug(`[Payment Initiation] Step 5: BitPay mode: ${isTest ? 'TEST' : 'PRODUCTION'} (from stored payment URL)`);
+          this.logger.debug(`[Payment Initiation] Step 5: BitPay mode: ${isTest ? 'TEST' : 'PRODUCTION'} (from environment variable)`);
           this.logger.debug(`[Payment Initiation] Step 5: Stored payment URL: ${storedUrl}`);
           this.logger.debug(`[Payment Initiation] Step 5: Expected URL: ${expectedUrl}`);
           
