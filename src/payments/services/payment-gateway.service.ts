@@ -137,6 +137,7 @@ export class PaymentGatewayService {
           api: apiKey,
           amount: amount.toString(), // Must be string, integer value
           redirect: request.callbackUrl,
+          factorId: request.metadata?.paymentId || request.metadata?.eventId || authority, // Add factorId for tracking
         },
         message: 'در حال انتقال به درگاه پرداخت...',
       };
