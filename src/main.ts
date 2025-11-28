@@ -46,6 +46,7 @@ async function bootstrap() {
     origin: [
       'http://0.0.0.0:3000',
       'http://0.0.0.0:3002',
+      'http://0.0.0.0:3001',
       'http://localhost:3000',
       'http://185.149.192.60:3000',
       'https://veventexpo.ir',

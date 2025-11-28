@@ -3,16 +3,18 @@ services:
     image: postgres:15-alpine
     container_name: vevent-postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: vevent
-      POSTGRES_PASSWORD: veventpass
-      POSTGRES_DB: veventdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vevent"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -21,9 +23,11 @@ services:
     image: minio/minio:latest
     container_name: vevent-minio
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     volumes:
       - minio-data:/data
     ports:
@@ -40,39 +44,48 @@ services:
     build: .
     container_name: vevent-backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgresql://vevent:veventpass@postgres:5432/veventdb?schema=public
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3001}
+      # Database - use service name for internal Docker network
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       # JWT Configuration
-      JWT_ACCESS_SECRET: your-secret-key-change-in-production
-      JWT_ACCESS_EXPIRES_IN: 1h
-      JWT_REFRESH_SECRET: your-refresh-secret-change-in-production
-      JWT_REFRESH_EXPIRES_IN: 7d
-      # MinIO Configuration
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      # MinIO Configuration - use service name for internal Docker network
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin123
-      MINIO_BUCKET: vevent-assets
-      MINIO_USE_SSL: false
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_USE_SSL: ${MINIO_USE_SSL}
       # SMS Configuration
-      SMS_MOCK: 'false'
-      SMS_IR_API_KEY: fb3Or2ZTX5LyaopiQ8PzW7GAOYtaxSZSIq8yAnpqulMS2Kg4
-      SMS_IR_TEMPLATE_ID: '545646'
+      SMS_MOCK: ${SMS_MOCK}
+      SMS_IR_API_KEY: ${SMS_IR_API_KEY}
+      SMS_IR_TEMPLATE_ID: ${SMS_IR_TEMPLATE_ID}
       # OTP Configuration
-      OTP_CODE_LENGTH: '4'
-      OTP_EXPIRES_IN: '300'
-      OTP_MAX_ATTEMPTS: '3'
+      OTP_CODE_LENGTH: ${OTP_CODE_LENGTH}
+      OTP_EXPIRES_IN: ${OTP_EXPIRES_IN}
+      OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS}
+      OTP_RATE_LIMIT_COUNT: ${OTP_RATE_LIMIT_COUNT:-3}
+      OTP_RATE_LIMIT_WINDOW: ${OTP_RATE_LIMIT_WINDOW:-300}
+      OTP_SESSION_EXPIRES_IN: ${OTP_SESSION_EXPIRES_IN:-900}
       # Payment Gateway Configuration
-      PAYMENT_GATEWAY_NAME: bitpay
-      PAYMENT_GATEWAY_MOCK: false
-      BITPAY_API_KEY: 6f198-ef733-458ae-3f70b-b0e0b373ab187f416f6d45da1a79
-      BITPAY_TEST_MODE: false
-      PAYMENT_CALLBACK_URL: http://veventexpo.ir/payment/result
-      DEFAULT_EVENT_PRICE: '150000'
-      PAYMENT_CURRENCY: IRR
+      PAYMENT_GATEWAY_NAME: ${PAYMENT_GATEWAY_NAME}
+      PAYMENT_GATEWAY_MOCK: ${PAYMENT_GATEWAY_MOCK}
+      BITPAY_API_KEY: ${BITPAY_API_KEY}
+      BITPAY_TEST_MODE: ${BITPAY_TEST_MODE}
+      PAYMENT_CALLBACK_URL: ${PAYMENT_CALLBACK_URL}
+      DEFAULT_EVENT_PRICE: ${DEFAULT_EVENT_PRICE:-150000}
+      PAYMENT_CURRENCY: ${PAYMENT_CURRENCY:-IRR}
+      # Cookie Configuration
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      FRONTEND_URL: ${FRONTEND_URL}
     ports:
-      - "3001:3001"
+      - "${PORT:-3001}:${PORT:-3001}"
     depends_on:
       postgres:
         condition: service_healthy
