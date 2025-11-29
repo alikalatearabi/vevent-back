@@ -251,7 +251,44 @@ export class EventsService {
       if (userId) {
         // ensure no duplicate
         const exists = await tx.attendee.findFirst({ where: { eventId: id, userId } });
-        if (exists) return exists;
+        if (exists) {
+          // Check if user is owner and auto-create completed payment if needed
+          const user = await tx.user.findUnique({ 
+            where: { id: userId },
+            select: { phone: true }
+          });
+          
+          const ownerPhone = process.env.OWNER_PHONE;
+          const isOwner = ownerPhone && user?.phone === ownerPhone;
+          
+          if (isOwner) {
+            // Check if payment already exists for owner
+            const existingPayment = await tx.payment.findFirst({
+              where: { userId, eventId: id }
+            });
+            
+            if (!existingPayment) {
+              // Auto-create completed payment for owner
+              await tx.payment.create({
+                data: {
+                  userId,
+                  eventId: id,
+                  attendeeId: exists.id,
+                  amount: 0, // Free for owner
+                  currency: 'IRR',
+                  status: 'COMPLETED',
+                  gateway: 'owner-bypass',
+                  refId: 'OWNER-' + Date.now(),
+                  paidAt: new Date(),
+                  metadata: { ownerBypass: true }
+                }
+              });
+            }
+          }
+          
+          return exists;
+        }
+        
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) throw new BadRequestException('User not found');
         const firstName = user.firstname;
@@ -268,6 +305,29 @@ export class EventsService {
             phone: user.phone
           } 
         });
+        
+        // Check if user is owner and auto-create completed payment
+        const ownerPhone = process.env.OWNER_PHONE;
+        const isOwner = ownerPhone && user.phone === ownerPhone;
+        
+        if (isOwner) {
+          // Auto-create completed payment for owner
+          await tx.payment.create({
+            data: {
+              userId,
+              eventId: id,
+              attendeeId: at.id,
+              amount: 0, // Free for owner
+              currency: 'IRR',
+              status: 'COMPLETED',
+              gateway: 'owner-bypass',
+              refId: 'OWNER-' + Date.now(),
+              paidAt: new Date(),
+              metadata: { ownerBypass: true }
+            }
+          });
+        }
+        
         return at;
       }
 

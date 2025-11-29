@@ -335,7 +335,11 @@ export class AuthService {
     ]);
 
     const isEventRegistered = eventRegistrations > 0;
-    const isPaymentComplete = completedPayments > 0;
+
+    // Check if user is the owner (bypass payment requirement)
+    const ownerPhone = process.env.OWNER_PHONE;
+    const isOwner = ownerPhone && user.phone === ownerPhone;
+    const isPaymentComplete = isOwner || completedPayments > 0;
 
     // 6. Generate authentication tokens
     const accessToken = await this.createAccessToken(user.id);

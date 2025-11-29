@@ -79,6 +79,7 @@ export class UsersService {
         email: true,
         company: true,
         jobTitle: true,
+        phone: true,
       },
     });
 
@@ -110,14 +111,25 @@ export class UsersService {
     });
     const isEventRegistered = eventRegistrations > 0;
 
-    // Check if user has completed any payments
-    const completedPayments = await this.prisma.payment.count({
-      where: {
-        userId,
-        status: 'COMPLETED',
-      },
-    });
-    const isPaymentComplete = completedPayments > 0;
+    // Check if user is the owner (bypass payment requirement)
+    const ownerPhone = process.env.OWNER_PHONE;
+    const isOwner = ownerPhone && user.phone === ownerPhone;
+
+    // Check if user has completed any payments OR is the owner
+    let isPaymentComplete = false;
+    if (isOwner) {
+      // Owner bypass - always consider payment complete
+      isPaymentComplete = true;
+    } else {
+      // Regular user - check actual payment status
+      const completedPayments = await this.prisma.payment.count({
+        where: {
+          userId,
+          status: 'COMPLETED',
+        },
+      });
+      isPaymentComplete = completedPayments > 0;
+    }
 
     return {
       isProfileComplete,
