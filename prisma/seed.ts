@@ -28,12 +28,9 @@ async function main() {
     console.log('🎉 Database Seeding Completed Successfully!');
     console.log('═══════════════════════════════════════════════════');
     console.log('');
-    console.log('✅ Admin User: admin@vevent.com / Admin@123456');
-    console.log('✅ Test User: user@vevent.com / User@123456');
-    console.log('✅ Categories & Tags: Persian titles added');
-    console.log('✅ Products: Categorized and tagged');
-    console.log('');
-    console.log('🚀 You can now login and test the API!');
+    console.log('✅ Seed structure ready - add your data to seed files');
+    console.log('💡 Edit seed-users.ts to add admin and test users');
+    console.log('💡 Edit update-persian-categories.ts to add categories and tags');
     console.log('');
   } catch (error) {
     console.error('');

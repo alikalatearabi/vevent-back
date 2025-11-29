@@ -6,10 +6,17 @@ const prisma = new PrismaClient();
 async function seedAdminUser() {
   console.log('🌱 Seeding admin user...');
 
-  // Admin user details
-  const adminEmail = 'admin@vevent.com';
-  const adminPassword = 'Admin@123456'; // Change this in production!
-  const adminName = 'Admin User';
+  // TODO: Add your admin user data here
+  const adminEmail = ''; // Add admin email
+  const adminPassword = ''; // Add admin password
+  const adminName = ''; // Add admin name
+  const adminPhone = ''; // Add admin phone
+
+  if (!adminEmail || !adminPassword || !adminName) {
+    console.log('⚠️  Admin user data not configured. Skipping...');
+    console.log('💡 Add admin data to seed-users.ts to create admin user');
+    return null;
+  }
 
   // Check if admin already exists
   const existingAdmin = await prisma.user.findUnique({
@@ -32,7 +39,7 @@ async function seedAdminUser() {
       passwordHash: hashedPassword,
       firstname: adminName.split(' ')[0] || 'Admin',
       lastname: adminName.split(' ').slice(1).join(' ') || 'User',
-      phone: '09123456789', // Default admin phone
+      phone: adminPhone || '',
       role: 'ADMIN',
     }
   });
@@ -54,18 +61,27 @@ async function seedAdminUser() {
 async function seedTestUsers() {
   console.log('🌱 Seeding test users...');
 
-  const testUsers = [
-    {
-      email: 'user@vevent.com',
-      password: 'User@123456',
-      name: 'Test User'
-    },
-    {
-      email: 'exhibitor@vevent.com',
-      password: 'Exhibitor@123456',
-      name: 'Exhibitor User'
-    }
+  // TODO: Add your test users data here
+  const testUsers: Array<{
+    email: string;
+    password: string;
+    name: string;
+    phone?: string;
+  }> = [
+    // Example structure (empty for now):
+    // {
+    //   email: 'user@example.com',
+    //   password: 'Password123!',
+    //   name: 'Test User',
+    //   phone: '09123456789'
+    // }
   ];
+
+  if (testUsers.length === 0) {
+    console.log('⚠️  No test users configured. Skipping...');
+    console.log('💡 Add test users data to seed-users.ts to create test users');
+    return;
+  }
 
   let createdCount = 0;
   for (const user of testUsers) {
@@ -81,7 +97,7 @@ async function seedTestUsers() {
           passwordHash: hashedPassword,
           firstname: user.name.split(' ')[0] || user.email.split('@')[0],
           lastname: user.name.split(' ').slice(1).join(' ') || 'User',
-          phone: '09123456789', // Default phone for seed users
+          phone: user.phone || '',
         }
       });
       createdCount++;

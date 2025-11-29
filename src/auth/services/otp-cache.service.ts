@@ -132,13 +132,6 @@ export class OtpCacheService {
       return { valid: false };
     }
 
-    if (otpCode === '1234') {
-      this.logger.debug(`Test OTP used for phone: ${phone.substring(0, 5)}***`);
-      this.otpStore.delete(phone);
-      this.sessionStore.delete(sessionId);
-      return { valid: true, phone };
-    }
-
     const otpData = this.otpStore.get(phone);
     
     if (!otpData || otpData.sessionId !== sessionId) {
