@@ -252,16 +252,18 @@ export class EventsService {
         // ensure no duplicate
         const exists = await tx.attendee.findFirst({ where: { eventId: id, userId } });
         if (exists) {
-          // Check if user is owner and auto-create completed payment if needed
+          // Check if user is payment-free and auto-create completed payment if needed
           const user = await tx.user.findUnique({ 
             where: { id: userId },
-            select: { phone: true }
+            select: { phone: true, isPaymentFree: true }
           });
           
+          // Check owner phone (backward compatibility)
           const ownerPhone = process.env.OWNER_PHONE;
           const isOwner = ownerPhone && user?.phone === ownerPhone;
+          const isPaymentFree = isOwner || user?.isPaymentFree === true;
           
-          if (isOwner) {
+          if (isPaymentFree) {
             // Check if payment already exists for owner
             const existingPayment = await tx.payment.findFirst({
               where: { userId, eventId: id }
@@ -277,10 +279,10 @@ export class EventsService {
                   amount: 0, // Free for owner
                   currency: 'IRR',
                   status: 'COMPLETED',
-                  gateway: 'owner-bypass',
-                  refId: 'OWNER-' + Date.now(),
+                  gateway: 'payment-free-bypass',
+                  refId: 'PAYMENT-FREE-' + Date.now(),
                   paidAt: new Date(),
-                  metadata: { ownerBypass: true }
+                  metadata: { paymentFreeBypass: true }
                 }
               });
             }
@@ -306,12 +308,14 @@ export class EventsService {
           } 
         });
         
-        // Check if user is owner and auto-create completed payment
+        // Check if user is payment-free and auto-create completed payment
+        // Check owner phone (backward compatibility)
         const ownerPhone = process.env.OWNER_PHONE;
         const isOwner = ownerPhone && user.phone === ownerPhone;
+        const isPaymentFree = isOwner || user.isPaymentFree === true;
         
-        if (isOwner) {
-          // Auto-create completed payment for owner
+        if (isPaymentFree) {
+          // Auto-create completed payment for payment-free user
           await tx.payment.create({
             data: {
               userId,
@@ -320,10 +324,10 @@ export class EventsService {
               amount: 0, // Free for owner
               currency: 'IRR',
               status: 'COMPLETED',
-              gateway: 'owner-bypass',
-              refId: 'OWNER-' + Date.now(),
+              gateway: 'payment-free-bypass',
+              refId: 'PAYMENT-FREE-' + Date.now(),
               paidAt: new Date(),
-              metadata: { ownerBypass: true }
+              metadata: { paymentFreeBypass: true }
             }
           });
         }

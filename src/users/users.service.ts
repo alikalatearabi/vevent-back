@@ -1,13 +1,16 @@
-import { Inject, Injectable, BadRequestException, ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, ForbiddenException, ConflictException, NotFoundException, forwardRef } from '@nestjs/common';
 import { PrismaClient, User, Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { AssetService } from '../common/services/asset.service';
+import { PaymentBypassService } from '../auth/services/payment-bypass.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @Inject('PRISMA') private readonly prisma: PrismaClient,
     private readonly assetService: AssetService,
+    @Inject(forwardRef(() => PaymentBypassService))
+    private readonly paymentBypassService: PaymentBypassService,
   ) { }
 
   async findById(id: string) {
@@ -80,6 +83,7 @@ export class UsersService {
         company: true,
         jobTitle: true,
         phone: true,
+        isPaymentFree: true,
       },
     });
 
@@ -111,14 +115,18 @@ export class UsersService {
     });
     const isEventRegistered = eventRegistrations > 0;
 
-    // Check if user is the owner (bypass payment requirement)
+    // Check if user is payment-free (database flag or owner phone)
+    // Check owner phone first (backward compatibility)
     const ownerPhone = process.env.OWNER_PHONE;
     const isOwner = ownerPhone && user.phone === ownerPhone;
+    
+    // Check payment-free status from database or owner
+    const isPaymentFree = isOwner || user.isPaymentFree === true;
 
-    // Check if user has completed any payments OR is the owner
+    // Check if user has completed any payments OR is payment-free
     let isPaymentComplete = false;
-    if (isOwner) {
-      // Owner bypass - always consider payment complete
+    if (isPaymentFree) {
+      // Payment-free user - always consider payment complete
       isPaymentComplete = true;
     } else {
       // Regular user - check actual payment status
@@ -466,6 +474,65 @@ export class UsersService {
       data: {
         avatarAssetId: updatedUser.avatarAssetId,
         avatarUrl: updatedUser.avatarAsset?.url || null,
+      },
+    };
+  }
+
+  // Admin: Set payment-free status for a user
+  async setPaymentFreeStatus(userId: string, isPaymentFree: boolean) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, phone: true, email: true, firstname: true, lastname: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.paymentBypassService.setPaymentFree(userId, isPaymentFree);
+
+    return {
+      success: true,
+      message: `Payment-free status ${isPaymentFree ? 'enabled' : 'disabled'} for user`,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        email: user.email,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        isPaymentFree,
+      },
+    };
+  }
+
+  // Admin: Get all payment-free users
+  async getAllPaymentFreeUsers() {
+    return this.paymentBypassService.getAllPaymentFreeUsers();
+  }
+
+  // Admin: Set payment-free status by phone number
+  async setPaymentFreeStatusByPhone(phone: string, isPaymentFree: boolean) {
+    const user = await this.prisma.user.findFirst({
+      where: { phone },
+      select: { id: true, phone: true, email: true, firstname: true, lastname: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.paymentBypassService.setPaymentFreeByPhone(phone, isPaymentFree);
+
+    return {
+      success: true,
+      message: `Payment-free status ${isPaymentFree ? 'enabled' : 'disabled'} for user`,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        email: user.email,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        isPaymentFree,
       },
     };
   }

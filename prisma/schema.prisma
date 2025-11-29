@@ -19,6 +19,7 @@ model User {
   role          Role           @default(USER)
   avatarAssetId String?
   isActive      Boolean        @default(true)
+  isPaymentFree Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?

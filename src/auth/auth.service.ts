@@ -9,6 +9,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { PaymentBypassService } from './services/payment-bypass.service';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +22,7 @@ export class AuthService {
     private readonly otpCacheService: OtpCacheService,
     private readonly smsService: SmsService,
     private readonly rateLimitService: RateLimitService,
+    private readonly paymentBypassService: PaymentBypassService,
   ) {}
 
   private getAccessExpiresSeconds() {
@@ -344,6 +346,9 @@ export class AuthService {
       });
     }
 
+    // 4.5. Auto-set payment-free status if user is a speaker
+    await this.paymentBypassService.autoSetPaymentFreeIfSpeaker(user.phone);
+
     // 5. Check user status flags (run queries in parallel for better performance)
     // Required: firstname, lastname, email (not temp)
     // Optional: company, jobTitle (if provided, must be non-empty strings)
@@ -373,10 +378,9 @@ export class AuthService {
 
     const isEventRegistered = eventRegistrations > 0;
 
-    // Check if user is the owner (bypass payment requirement)
-    const ownerPhone = process.env.OWNER_PHONE;
-    const isOwner = ownerPhone && user.phone === ownerPhone;
-    const isPaymentComplete = isOwner || completedPayments > 0;
+    // Check if user is payment-free (database flag or owner phone)
+    const isPaymentFree = await this.paymentBypassService.isPaymentFree(user.phone);
+    const isPaymentComplete = isPaymentFree || completedPayments > 0;
 
     // 6. Generate authentication tokens
     const accessToken = await this.createAccessToken(user.id);

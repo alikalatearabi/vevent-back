@@ -1,7 +1,7 @@
-import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile, Patch } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { CreateRecentDto } from './dto/create-recent.dto';
@@ -128,5 +128,67 @@ export class UsersController {
       throw new BadRequestException('No file uploaded');
     }
     return this.usersService.uploadAvatar(req.user.sub, file);
+  }
+
+  // Admin endpoints for managing payment-free users
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Get('admin/payment-free')
+  @ApiOperation({ summary: 'Get all payment-free users (admin only)' })
+  @ApiResponse({ status: 200, description: 'List of payment-free users' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getAllPaymentFreeUsers(@Req() req: any) {
+    // TODO: Add admin role check
+    return this.usersService.getAllPaymentFreeUsers();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Patch('admin/users/:userId/payment-free')
+  @ApiOperation({ summary: 'Set payment-free status for a user (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        isPaymentFree: { type: 'boolean' },
+      },
+      required: ['isPaymentFree'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Payment-free status updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async setPaymentFreeStatus(
+    @Param('userId') userId: string,
+    @Body() dto: { isPaymentFree: boolean },
+    @Req() req: any,
+  ) {
+    // TODO: Add admin role check
+    return this.usersService.setPaymentFreeStatus(userId, dto.isPaymentFree);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Patch('admin/users/by-phone/:phone/payment-free')
+  @ApiOperation({ summary: 'Set payment-free status for a user by phone (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        isPaymentFree: { type: 'boolean' },
+      },
+      required: ['isPaymentFree'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Payment-free status updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async setPaymentFreeStatusByPhone(
+    @Param('phone') phone: string,
+    @Body() dto: { isPaymentFree: boolean },
+    @Req() req: any,
+  ) {
+    // TODO: Add admin role check
+    return this.usersService.setPaymentFreeStatusByPhone(phone, dto.isPaymentFree);
   }
 }

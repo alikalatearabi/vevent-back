@@ -17,6 +17,10 @@
     "seed:hr-event": "ts-node -r tsconfig-paths/register prisma/seed-hr-event-simple.ts",
     "delete:payments": "ts-node -r tsconfig-paths/register prisma/delete-all-payments.ts",
     "clear:db": "ts-node -r tsconfig-paths/register prisma/clear-database.ts",
+    "set:payment-free": "ts-node -r tsconfig-paths/register prisma/set-payment-free.ts",
+    "set:payment-free-batch": "ts-node -r tsconfig-paths/register prisma/set-payment-free-batch.ts",
+    "remove:payment-free": "ts-node -r tsconfig-paths/register prisma/remove-payment-free.ts",
+    "delete:user": "ts-node -r tsconfig-paths/register prisma/delete-user.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

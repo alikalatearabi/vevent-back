@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -10,16 +10,17 @@ import { RefreshTokenService } from './refresh-token.service';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { PaymentBypassService } from './services/payment-bypass.service';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
     PrismaModule,
-    UsersModule,
+    forwardRef(() => UsersModule),
   ],
-  providers: [AuthService, JwtStrategy, RefreshTokenService, OtpCacheService, SmsService, RateLimitService],
+  providers: [AuthService, JwtStrategy, RefreshTokenService, OtpCacheService, SmsService, RateLimitService, PaymentBypassService],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, PaymentBypassService],
 })
 export class AuthModule {}
