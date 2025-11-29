@@ -9,6 +9,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
+import { RateLimitService } from './services/rate-limit.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { SmsService } from './services/sms.service';
     PrismaModule,
     UsersModule,
   ],
-  providers: [AuthService, JwtStrategy, RefreshTokenService, OtpCacheService, SmsService],
+  providers: [AuthService, JwtStrategy, RefreshTokenService, OtpCacheService, SmsService, RateLimitService],
   controllers: [AuthController],
   exports: [AuthService],
 })

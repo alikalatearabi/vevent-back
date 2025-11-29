@@ -8,6 +8,7 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
+import { RateLimitService } from './services/rate-limit.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly otpCacheService: OtpCacheService,
     private readonly smsService: SmsService,
+    private readonly rateLimitService: RateLimitService,
   ) {}
 
   private getAccessExpiresSeconds() {
@@ -152,21 +154,56 @@ export class AuthService {
   /**
    * Send OTP to phone number
    * @param dto SendOtpDto containing phone number
+   * @param req Request object to get client IP
    * @returns Success response with sessionId
    */
-  async sendOtp(dto: SendOtpDto) {
+  async sendOtp(dto: SendOtpDto, req?: any) {
     const { phone } = dto;
+
+    // Get client IP address
+    const clientIp = req?.ip || 
+                     req?.connection?.remoteAddress || 
+                     req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req?.headers?.['x-real-ip'] || 
+                     'unknown';
 
     // 1. Validate phone number format (already validated by DTO decorators)
     
-    // 2. Check rate limiting
+    // 2. Check IP-based rate limit (main protection against abuse)
+    const ipLimitResult = this.rateLimitService.checkIpRateLimit(clientIp, phone);
+    if (!ipLimitResult.allowed) {
+      this.logger.warn(`[OTP] IP rate limit exceeded. IP: ${clientIp}, Phone: ${phone.substring(0, 5)}***, Reason: ${ipLimitResult.reason}`);
+      
+      let message = 'تعداد درخواست‌های مجاز به پایان رسیده است';
+      if (ipLimitResult.reason === 'DAILY_LIMIT_EXCEEDED') {
+        message = 'تعداد درخواست‌های مجاز در روز به پایان رسیده است';
+      } else if (ipLimitResult.reason === 'HOURLY_LIMIT_EXCEEDED') {
+        message = 'تعداد درخواست‌های مجاز در ساعت به پایان رسیده است';
+      } else if (ipLimitResult.reason === 'SUSPICIOUS_PATTERN_DETECTED') {
+        message = 'الگوی مشکوک شناسایی شد. لطفاً بعداً تلاش کنید.';
+      } else {
+        message = 'تعداد درخواست‌های مجاز در دقیقه به پایان رسیده است';
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          message,
+          error: 'IP_RATE_LIMIT_EXCEEDED',
+          retryAfter: ipLimitResult.retryAfter,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // 3. Check per-phone rate limiting (existing check)
     const rateLimitResult = this.otpCacheService.checkRateLimit(phone);
     if (!rateLimitResult.allowed) {
       throw new HttpException(
         {
           success: false,
-          message: 'تعداد درخواست‌های مجاز در ۵ دقیقه گذشته به پایان رسیده است',
-          error: 'RATE_LIMIT_EXCEEDED',
+          message: 'تعداد درخواست‌های مجاز برای این شماره در ۵ دقیقه گذشته به پایان رسیده است',
+          error: 'PHONE_RATE_LIMIT_EXCEEDED',
           retryAfter: rateLimitResult.retryAfter,
         },
         HttpStatus.TOO_MANY_REQUESTS,

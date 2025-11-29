@@ -13,6 +13,10 @@ async function bootstrap() {
   
   const app = await NestFactory.create(AppModule);
   
+  // Trust proxy to get real client IP (important for rate limiting)
+  // This allows Express to read X-Forwarded-For and X-Real-IP headers
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
+  
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
