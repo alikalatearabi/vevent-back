@@ -86,6 +86,80 @@ let EventsService = class EventsService {
         });
         return e;
     }
+    async getEventSpeakers(eventId) {
+        const event = await this.prisma.event.findUnique({
+            where: { id: eventId },
+            select: {
+                id: true,
+                name: true,
+                start: true,
+                location: true
+            }
+        });
+        if (!event) {
+            throw new common_1.NotFoundException('Event not found');
+        }
+        let eventIdsToQuery = [eventId];
+        if (event.name === 'hr-analytics-event-2025') {
+            const sameDayEvents = await this.prisma.event.findMany({
+                where: {
+                    deletedAt: null,
+                    start: {
+                        gte: new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate()),
+                        lt: new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate() + 1)
+                    },
+                    location: event.location
+                },
+                select: { id: true }
+            });
+            eventIdsToQuery = sameDayEvents.map(e => e.id);
+        }
+        const eventSpeakers = await this.prisma.eventSpeaker.findMany({
+            where: {
+                eventId: { in: eventIdsToQuery }
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstname: true,
+                        lastname: true,
+                        email: true,
+                        phone: true,
+                        company: true,
+                        jobTitle: true
+                    }
+                },
+                event: {
+                    select: {
+                        id: true,
+                        name: true,
+                        title: true
+                    }
+                }
+            },
+            orderBy: { order: 'asc' }
+        });
+        const uniqueSpeakers = new Map();
+        eventSpeakers.forEach(es => {
+            if (!uniqueSpeakers.has(es.user.id)) {
+                uniqueSpeakers.set(es.user.id, es);
+            }
+        });
+        return {
+            data: Array.from(uniqueSpeakers.values()).map(es => ({
+                id: es.user.id,
+                firstName: es.user.firstname,
+                lastName: es.user.lastname,
+                email: es.user.email,
+                phone: es.user.phone,
+                company: es.user.company,
+                jobTitle: es.user.jobTitle,
+                role: es.role || 'SPEAKER',
+                order: es.order || 0
+            }))
+        };
+    }
     async create(data, userId) {
         if (new Date(data.start) >= new Date(data.end))
             throw new common_1.BadRequestException('start must be before end');
@@ -103,6 +177,8 @@ let EventsService = class EventsService {
                 timed: data.timed ?? true,
                 location: data.location,
                 published: data.published ?? false,
+                price: data.price ? parseFloat(data.price.toString()) : undefined,
+                currency: data.currency || 'IRR',
             };
             if (data.exhibitorId)
                 createData.exhibitor = { connect: { id: data.exhibitorId } };
@@ -125,6 +201,12 @@ let EventsService = class EventsService {
         const tags = data.tags;
         const speakers = data.speakers;
         const { tags: _t, speakers: _s, ...updateFields } = data;
+        if (data.price !== undefined) {
+            updateFields.price = parseFloat(data.price.toString());
+        }
+        if (data.currency !== undefined) {
+            updateFields.currency = data.currency;
+        }
         return this.prisma.$transaction(async (tx) => {
             const up = await tx.event.update({ where: { id }, data: updateFields });
             if (tags) {
@@ -153,8 +235,36 @@ let EventsService = class EventsService {
         return this.prisma.$transaction(async (tx) => {
             if (userId) {
                 const exists = await tx.attendee.findFirst({ where: { eventId: id, userId } });
-                if (exists)
+                if (exists) {
+                    const user = await tx.user.findUnique({
+                        where: { id: userId },
+                        select: { phone: true }
+                    });
+                    const ownerPhone = process.env.OWNER_PHONE;
+                    const isOwner = ownerPhone && user?.phone === ownerPhone;
+                    if (isOwner) {
+                        const existingPayment = await tx.payment.findFirst({
+                            where: { userId, eventId: id }
+                        });
+                        if (!existingPayment) {
+                            await tx.payment.create({
+                                data: {
+                                    userId,
+                                    eventId: id,
+                                    attendeeId: exists.id,
+                                    amount: 0,
+                                    currency: 'IRR',
+                                    status: 'COMPLETED',
+                                    gateway: 'owner-bypass',
+                                    refId: 'OWNER-' + Date.now(),
+                                    paidAt: new Date(),
+                                    metadata: { ownerBypass: true }
+                                }
+                            });
+                        }
+                    }
                     return exists;
+                }
                 const user = await tx.user.findUnique({ where: { id: userId } });
                 if (!user)
                     throw new common_1.BadRequestException('User not found');
@@ -172,6 +282,24 @@ let EventsService = class EventsService {
                         phone: user.phone
                     }
                 });
+                const ownerPhone = process.env.OWNER_PHONE;
+                const isOwner = ownerPhone && user.phone === ownerPhone;
+                if (isOwner) {
+                    await tx.payment.create({
+                        data: {
+                            userId,
+                            eventId: id,
+                            attendeeId: at.id,
+                            amount: 0,
+                            currency: 'IRR',
+                            status: 'COMPLETED',
+                            gateway: 'owner-bypass',
+                            refId: 'OWNER-' + Date.now(),
+                            paidAt: new Date(),
+                            metadata: { ownerBypass: true }
+                        }
+                    });
+                }
                 return at;
             }
             if (!email)
@@ -223,6 +351,7 @@ let EventsService = class EventsService {
                 where: {
                     deletedAt: null,
                     published: true,
+                    name: 'hr-analytics-event-2025',
                 },
                 include: {
                     assets: {
@@ -241,10 +370,61 @@ let EventsService = class EventsService {
                         },
                     },
                 },
-                orderBy: {
-                    start: 'desc',
-                },
             });
+            if (!event) {
+                event = await this.prisma.event.findFirst({
+                    where: {
+                        deletedAt: null,
+                        published: true,
+                        name: 'opening-ceremony',
+                    },
+                    include: {
+                        assets: {
+                            where: { role: 'cover' },
+                            include: { asset: true },
+                        },
+                        tags: {
+                            include: { tag: true },
+                        },
+                        createdBy: {
+                            select: {
+                                id: true,
+                                firstname: true,
+                                lastname: true,
+                                company: true,
+                            },
+                        },
+                    },
+                });
+            }
+            if (!event) {
+                event = await this.prisma.event.findFirst({
+                    where: {
+                        deletedAt: null,
+                        published: true,
+                    },
+                    include: {
+                        assets: {
+                            where: { role: 'cover' },
+                            include: { asset: true },
+                        },
+                        tags: {
+                            include: { tag: true },
+                        },
+                        createdBy: {
+                            select: {
+                                id: true,
+                                firstname: true,
+                                lastname: true,
+                                company: true,
+                            },
+                        },
+                    },
+                    orderBy: {
+                        start: 'asc',
+                    },
+                });
+            }
         }
         if (!event) {
             throw new common_1.NotFoundException({
@@ -295,8 +475,8 @@ let EventsService = class EventsService {
                 end: event.end.toISOString(),
                 location: event.location || null,
                 timezone: event.timezone || 'Asia/Tehran',
-                price: defaultPrice,
-                currency: currency,
+                price: event.price ? parseFloat(event.price.toString()) : defaultPrice,
+                currency: event.currency || currency,
                 features: features,
                 published: event.published,
                 isActive: isActive,

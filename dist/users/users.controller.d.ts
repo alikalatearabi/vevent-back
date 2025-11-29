@@ -5,30 +5,7 @@ import { CompleteProfileDto } from './dto/complete-profile.dto';
 export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
-    me(req: any): Promise<{
-        isProfileComplete: boolean;
-        isEventRegistered: boolean;
-        isPaymentComplete: boolean;
-        avatarAsset: {
-            url: string;
-            id: string;
-            type: string;
-        };
-        id: string;
-        email: string;
-        firstname: string;
-        lastname: string;
-        passwordHash: string;
-        phone: string;
-        company: string | null;
-        jobTitle: string | null;
-        role: import(".prisma/client").$Enums.Role;
-        avatarAssetId: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
-    }>;
+    me(req: any): Promise<any>;
     listFavorites(req: any): Promise<{
         id: string;
         createdAt: Date;
@@ -51,7 +28,6 @@ export declare class UsersController {
         data: {
             userRole: string;
             registrationDate: Date;
-            end: Date;
             id: string;
             createdAt: Date;
             name: string;
@@ -59,6 +35,7 @@ export declare class UsersController {
             description: string;
             color: string;
             start: Date;
+            end: Date;
             timed: boolean;
             location: string;
             timezone: string;

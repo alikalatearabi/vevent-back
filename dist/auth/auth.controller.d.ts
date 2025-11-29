@@ -46,7 +46,7 @@ export declare class AuthController {
     logout(req: any, res: any): Promise<{
         message: string;
     }>;
-    sendOtp(dto: SendOtpDto): Promise<{
+    sendOtp(dto: SendOtpDto, req: any): Promise<{
         success: boolean;
         sessionId: string;
         message: string;

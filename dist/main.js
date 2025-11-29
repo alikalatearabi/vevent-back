@@ -6,7 +6,12 @@ const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 async function bootstrap() {
+    console.log('[Bootstrap] SMS Environment Variables:');
+    console.log(`  SMS_MOCK="${process.env.SMS_MOCK}" (type: ${typeof process.env.SMS_MOCK}, length: ${process.env.SMS_MOCK?.length})`);
+    console.log(`  SMS_IR_API_KEY="${process.env.SMS_IR_API_KEY ? process.env.SMS_IR_API_KEY.substring(0, 10) + '...' : 'NOT SET'}" (exists: ${!!process.env.SMS_IR_API_KEY})`);
+    console.log(`  SMS_IR_TEMPLATE_ID="${process.env.SMS_IR_TEMPLATE_ID}" (exists: ${!!process.env.SMS_IR_TEMPLATE_ID})`);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.getHttpAdapter().getInstance().set('trust proxy', true);
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
@@ -31,6 +36,8 @@ async function bootstrap() {
     app.enableCors({
         origin: [
             'http://0.0.0.0:3000',
+            'http://0.0.0.0:3002',
+            'http://0.0.0.0:3001',
             'http://localhost:3000',
             'http://185.149.192.60:3000',
             'https://veventexpo.ir',

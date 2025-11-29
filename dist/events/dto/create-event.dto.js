@@ -89,3 +89,15 @@ __decorate([
     (0, swagger_1.ApiPropertyOptional)({ default: false }),
     __metadata("design:type", Boolean)
 ], CreateEventDto.prototype, "published", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Event price in Rials', example: 150000 }),
+    __metadata("design:type", Number)
+], CreateEventDto.prototype, "price", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Currency code', default: 'IRR', example: 'IRR' }),
+    __metadata("design:type", String)
+], CreateEventDto.prototype, "currency", void 0);

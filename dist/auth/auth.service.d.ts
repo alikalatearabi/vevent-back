@@ -6,14 +6,16 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
+import { RateLimitService } from './services/rate-limit.service';
 export declare class AuthService {
     private readonly jwtService;
     private readonly prisma;
     private readonly refreshTokenService;
     private readonly otpCacheService;
     private readonly smsService;
+    private readonly rateLimitService;
     private readonly logger;
-    constructor(jwtService: JwtService, prisma: PrismaClient, refreshTokenService: RefreshTokenService, otpCacheService: OtpCacheService, smsService: SmsService);
+    constructor(jwtService: JwtService, prisma: PrismaClient, refreshTokenService: RefreshTokenService, otpCacheService: OtpCacheService, smsService: SmsService, rateLimitService: RateLimitService);
     private getAccessExpiresSeconds;
     private getRefreshExpiresSeconds;
     register(dto: RegisterDto, res: any): Promise<{
@@ -81,7 +83,7 @@ export declare class AuthService {
         updatedAt: Date;
         deletedAt: Date | null;
     }>;
-    sendOtp(dto: SendOtpDto): Promise<{
+    sendOtp(dto: SendOtpDto, req?: any): Promise<{
         success: boolean;
         sessionId: string;
         message: string;

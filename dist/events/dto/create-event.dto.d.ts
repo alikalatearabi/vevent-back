@@ -12,4 +12,6 @@ export declare class CreateEventDto {
     tags?: string[];
     speakers?: string[];
     published?: boolean;
+    price?: number;
+    currency?: string;
 }

@@ -19,6 +19,7 @@ const swagger_1 = require("@nestjs/swagger");
 const attendees_service_1 = require("./attendees.service");
 const connection_request_service_1 = require("./connection-request.service");
 const connection_request_dto_1 = require("./dto/connection-request.dto");
+const update_attendee_privacy_dto_1 = require("./dto/update-attendee-privacy.dto");
 let AttendeesController = class AttendeesController {
     constructor(attendeesService, connectionRequestService) {
         this.attendeesService = attendeesService;
@@ -32,6 +33,9 @@ let AttendeesController = class AttendeesController {
     }
     async getEventSpeakers(eventId, req) {
         return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'SPEAKER');
+    }
+    async updateAttendeePrivacy(attendeeId, dto, req) {
+        return this.attendeesService.updatePrivacySettings(attendeeId, req.user.sub, dto);
     }
     async getEventVisitors(eventId, req) {
         return this.attendeesService.getEventAttendees(eventId, req.user.sub, 'VISITOR');
@@ -81,6 +85,17 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AttendeesController.prototype, "getEventSpeakers", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiOperation)({ summary: 'Update attendee privacy settings' }),
+    (0, common_1.Patch)('attendees/:id/privacy'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_attendee_privacy_dto_1.UpdateAttendeePrivacyDto, Object]),
+    __metadata("design:returntype", Promise)
+], AttendeesController.prototype, "updateAttendeePrivacy", null);
 __decorate([
     (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, swagger_1.ApiOperation)({ summary: 'Get visitors for an event' }),

@@ -21,17 +21,19 @@ const argon2 = require("argon2");
 const refresh_token_service_1 = require("./refresh-token.service");
 const otp_cache_service_1 = require("./services/otp-cache.service");
 const sms_service_1 = require("./services/sms.service");
+const rate_limit_service_1 = require("./services/rate-limit.service");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, prisma, refreshTokenService, otpCacheService, smsService) {
+    constructor(jwtService, prisma, refreshTokenService, otpCacheService, smsService, rateLimitService) {
         this.jwtService = jwtService;
         this.prisma = prisma;
         this.refreshTokenService = refreshTokenService;
         this.otpCacheService = otpCacheService;
         this.smsService = smsService;
+        this.rateLimitService = rateLimitService;
         this.logger = new common_1.Logger(AuthService_1.name);
     }
     getAccessExpiresSeconds() {
-        const s = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
+        const s = process.env.JWT_ACCESS_EXPIRES_IN || '1h';
         if (s.endsWith('m'))
             return parseInt(s) * 60;
         if (s.endsWith('h'))
@@ -127,7 +129,7 @@ let AuthService = AuthService_1 = class AuthService {
     }
     async createAccessToken(userId) {
         const payload = { sub: userId };
-        return this.jwtService.signAsync(payload, { secret: process.env.JWT_ACCESS_SECRET || 'changeme', expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' });
+        return this.jwtService.signAsync(payload, { secret: process.env.JWT_ACCESS_SECRET || 'changeme', expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '1h' });
     }
     cookieOptions(maxAgeSeconds) {
         return {
@@ -142,14 +144,42 @@ let AuthService = AuthService_1 = class AuthService {
     async validateUserFromJwt(payload) {
         return this.prisma.user.findUnique({ where: { id: payload.sub } });
     }
-    async sendOtp(dto) {
+    async sendOtp(dto, req) {
         const { phone } = dto;
+        const clientIp = req?.ip ||
+            req?.connection?.remoteAddress ||
+            req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
+            req?.headers?.['x-real-ip'] ||
+            'unknown';
+        const ipLimitResult = this.rateLimitService.checkIpRateLimit(clientIp, phone);
+        if (!ipLimitResult.allowed) {
+            this.logger.warn(`[OTP] IP rate limit exceeded. IP: ${clientIp}, Phone: ${phone.substring(0, 5)}***, Reason: ${ipLimitResult.reason}`);
+            let message = 'تعداد درخواست‌های مجاز به پایان رسیده است';
+            if (ipLimitResult.reason === 'DAILY_LIMIT_EXCEEDED') {
+                message = 'تعداد درخواست‌های مجاز در روز به پایان رسیده است';
+            }
+            else if (ipLimitResult.reason === 'HOURLY_LIMIT_EXCEEDED') {
+                message = 'تعداد درخواست‌های مجاز در ساعت به پایان رسیده است';
+            }
+            else if (ipLimitResult.reason === 'SUSPICIOUS_PATTERN_DETECTED') {
+                message = 'الگوی مشکوک شناسایی شد. لطفاً بعداً تلاش کنید.';
+            }
+            else {
+                message = 'تعداد درخواست‌های مجاز در دقیقه به پایان رسیده است';
+            }
+            throw new common_1.HttpException({
+                success: false,
+                message,
+                error: 'IP_RATE_LIMIT_EXCEEDED',
+                retryAfter: ipLimitResult.retryAfter,
+            }, common_1.HttpStatus.TOO_MANY_REQUESTS);
+        }
         const rateLimitResult = this.otpCacheService.checkRateLimit(phone);
         if (!rateLimitResult.allowed) {
             throw new common_1.HttpException({
                 success: false,
-                message: 'تعداد درخواست‌های مجاز در ۵ دقیقه گذشته به پایان رسیده است',
-                error: 'RATE_LIMIT_EXCEEDED',
+                message: 'تعداد درخواست‌های مجاز برای این شماره در ۵ دقیقه گذشته به پایان رسیده است',
+                error: 'PHONE_RATE_LIMIT_EXCEEDED',
                 retryAfter: rateLimitResult.retryAfter,
             }, common_1.HttpStatus.TOO_MANY_REQUESTS);
         }
@@ -266,7 +296,9 @@ let AuthService = AuthService_1 = class AuthService {
             }),
         ]);
         const isEventRegistered = eventRegistrations > 0;
-        const isPaymentComplete = completedPayments > 0;
+        const ownerPhone = process.env.OWNER_PHONE;
+        const isOwner = ownerPhone && user.phone === ownerPhone;
+        const isPaymentComplete = isOwner || completedPayments > 0;
         const accessToken = await this.createAccessToken(user.id);
         const { raw } = await this.refreshTokenService.create(user.id, this.getRefreshExpiresSeconds());
         res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
@@ -294,5 +326,6 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
         client_1.PrismaClient,
         refresh_token_service_1.RefreshTokenService,
         otp_cache_service_1.OtpCacheService,
-        sms_service_1.SmsService])
+        sms_service_1.SmsService,
+        rate_limit_service_1.RateLimitService])
 ], AuthService);

@@ -5,26 +5,32 @@ export declare class UsersService {
     private readonly assetService;
     constructor(prisma: PrismaClient, assetService: AssetService);
     findById(id: string): Promise<{
-        avatarAsset: {
-            url: string;
-            id: string;
-            type: string;
-        };
-    } & {
         id: string;
         email: string;
         firstname: string;
         lastname: string;
-        passwordHash: string;
         phone: string;
-        company: string | null;
-        jobTitle: string | null;
+        company: string;
+        jobTitle: string;
         role: import(".prisma/client").$Enums.Role;
-        avatarAssetId: string | null;
+        avatarAssetId: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
+        deletedAt: Date;
+        attendees: {
+            id: string;
+            role: import(".prisma/client").$Enums.AttendeeRole;
+            eventId: string;
+            showCompany: boolean;
+            showEmail: boolean;
+            showPhone: boolean;
+        }[];
+        avatarAsset: {
+            id: string;
+            url: string;
+            type: string;
+        };
     }>;
     findByEmail(email: string): Promise<{
         id: string;
@@ -108,7 +114,6 @@ export declare class UsersService {
         data: {
             userRole: string;
             registrationDate: Date;
-            end: Date;
             id: string;
             createdAt: Date;
             name: string;
@@ -116,6 +121,7 @@ export declare class UsersService {
             description: string;
             color: string;
             start: Date;
+            end: Date;
             timed: boolean;
             location: string;
             timezone: string;

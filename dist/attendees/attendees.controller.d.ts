@@ -1,6 +1,7 @@
 import { AttendeesService } from './attendees.service';
 import { ConnectionRequestService } from './connection-request.service';
 import { CreateConnectionRequestDto, UpdateConnectionRequestDto } from './dto/connection-request.dto';
+import { UpdateAttendeePrivacyDto } from './dto/update-attendee-privacy.dto';
 export declare class AttendeesController {
     private readonly attendeesService;
     private readonly connectionRequestService;
@@ -62,6 +63,16 @@ export declare class AttendeesController {
             total: number;
         };
     }>;
+    updateAttendeePrivacy(attendeeId: string, dto: UpdateAttendeePrivacyDto, req: any): Promise<{
+        attendeeId: string;
+        eventId: string;
+        role: import(".prisma/client").$Enums.AttendeeRole;
+        privacy: {
+            showPhone: boolean;
+            showEmail: boolean;
+            showCompany: boolean;
+        };
+    }>;
     getEventVisitors(eventId: string, req: any): Promise<{
         data: {
             id: string;
@@ -99,6 +110,8 @@ export declare class AttendeesController {
     }>;
     getConnectionRequests(req: any, eventId?: string): Promise<{
         incomingRequests: {
+            id: string;
+            requestId: string;
             requesterId: string;
             receiverId: string;
             requestDateTime: string;
@@ -118,6 +131,8 @@ export declare class AttendeesController {
             };
         }[];
         outgoingRequests: {
+            id: string;
+            requestId: string;
             requesterId: string;
             receiverId: string;
             requestDateTime: string;
@@ -137,6 +152,8 @@ export declare class AttendeesController {
             };
         }[];
         connections: {
+            id: string;
+            requestId: string;
             requesterId: string;
             receiverId: string;
             requestDateTime: string;

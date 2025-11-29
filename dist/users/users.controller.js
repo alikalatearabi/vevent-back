@@ -31,7 +31,22 @@ let UsersController = class UsersController {
             throw new common_1.NotFoundException('User not found');
         }
         const statusFlags = await this.usersService.getUserStatusFlags(req.user.sub);
-        return { ...user, ...statusFlags };
+        const { attendees = [], ...userData } = user;
+        const attendeePrivacy = attendees.map((attendee) => ({
+            attendeeId: attendee.id,
+            eventId: attendee.eventId,
+            role: attendee.role,
+            privacy: {
+                showPhone: attendee.showPhone,
+                showEmail: attendee.showEmail,
+                showCompany: attendee.showCompany,
+            },
+        }));
+        return {
+            ...userData,
+            attendeePrivacy,
+            ...statusFlags,
+        };
     }
     async listFavorites(req) {
         return this.usersService.listFavorites(req.user.sub);

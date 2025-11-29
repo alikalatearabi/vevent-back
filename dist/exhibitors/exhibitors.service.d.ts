@@ -27,10 +27,10 @@ export declare class ExhibitorsService {
                 id: string;
                 createdAt: Date;
                 deletedAt: Date | null;
-                createdBy: string | null;
+                url: string;
                 type: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
-                url: string;
+                createdBy: string | null;
             };
         } & {
             id: string;
@@ -42,10 +42,10 @@ export declare class ExhibitorsService {
             tag: {
                 id: string;
                 createdAt: Date;
+                meta: import("@prisma/client/runtime/library").JsonValue | null;
                 name: string;
                 title: string | null;
                 color: string | null;
-                meta: import("@prisma/client/runtime/library").JsonValue | null;
             };
         } & {
             id: string;
@@ -68,6 +68,8 @@ export declare class ExhibitorsService {
             exhibitorId: string | null;
             timezone: string | null;
             published: boolean;
+            price: import("@prisma/client/runtime/library").Decimal | null;
+            currency: string | null;
             createdById: string | null;
         }[];
         products: ({
@@ -76,10 +78,10 @@ export declare class ExhibitorsService {
                     id: string;
                     createdAt: Date;
                     deletedAt: Date | null;
-                    createdBy: string | null;
+                    url: string;
                     type: string | null;
                     meta: import("@prisma/client/runtime/library").JsonValue | null;
-                    url: string;
+                    createdBy: string | null;
                 };
             } & {
                 id: string;
@@ -92,17 +94,17 @@ export declare class ExhibitorsService {
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
             metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            name: string;
             title: string | null;
             description: string | null;
             exhibitorId: string;
+            price: import("@prisma/client/runtime/library").Decimal | null;
             categoryId: string | null;
+            shortDescription: string | null;
+            imageUrl: string | null;
             inStock: boolean;
             featured: boolean;
-            shortDescription: string | null;
-            price: import("@prisma/client/runtime/library").Decimal | null;
-            imageUrl: string | null;
         })[];
     } & {
         id: string;
@@ -165,10 +167,10 @@ export declare class ExhibitorsService {
             id: string;
             createdAt: Date;
             deletedAt: Date | null;
-            createdBy: string | null;
+            url: string;
             type: string | null;
             meta: import("@prisma/client/runtime/library").JsonValue | null;
-            url: string;
+            createdBy: string | null;
         };
     } & {
         id: string;

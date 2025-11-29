@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const events_service_1 = require("./events.service");
 const find_events_dto_1 = require("./dto/find-events.dto");
 const create_event_dto_1 = require("./dto/create-event.dto");
+const update_event_dto_1 = require("./dto/update-event.dto");
 const register_attendee_dto_1 = require("./dto/register-attendee.dto");
 const passport_1 = require("@nestjs/passport");
 const optional_jwt_auth_guard_1 = require("../common/guards/optional-jwt-auth.guard");
@@ -34,6 +35,9 @@ let EventsController = class EventsController {
     async getActiveEvent() {
         return this.eventsService.getCurrentEvent();
     }
+    async getEventSpeakers(id) {
+        return this.eventsService.getEventSpeakers(id);
+    }
     async findById(id) {
         const e = await this.eventsService.findById(id);
         if (!e)
@@ -43,6 +47,12 @@ let EventsController = class EventsController {
     async create(dto, req) {
         const userId = req.user?.sub;
         return this.eventsService.create(dto, userId);
+    }
+    async update(id, dto, req) {
+        return this.eventsService.update(id, dto);
+    }
+    async patch(id, dto, req) {
+        return this.eventsService.update(id, dto);
     }
     async register(id, dto, req) {
         const payload = { name: dto.name, email: dto.email, ticketType: dto.ticketType };
@@ -99,6 +109,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EventsController.prototype, "getActiveEvent", null);
 __decorate([
+    (0, common_1.Get)(':id/speakers'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all speakers for an event' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of speakers for the event' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Event not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], EventsController.prototype, "getEventSpeakers", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Event detail' }),
     __param(0, (0, common_1.Param)('id')),
@@ -117,6 +137,34 @@ __decorate([
     __metadata("design:paramtypes", [create_event_dto_1.CreateEventDto, Object]),
     __metadata("design:returntype", Promise)
 ], EventsController.prototype, "create", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update event' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Event updated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Event not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_event_dto_1.UpdateEventDto, Object]),
+    __metadata("design:returntype", Promise)
+], EventsController.prototype, "update", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Patch)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Partially update event' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Event updated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Event not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_event_dto_1.UpdateEventDto, Object]),
+    __metadata("design:returntype", Promise)
+], EventsController.prototype, "patch", null);
 __decorate([
     (0, common_1.UseGuards)(optional_jwt_auth_guard_1.OptionalJwtAuthGuard),
     (0, common_1.Post)(':id/register'),

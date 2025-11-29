@@ -37,8 +37,8 @@ let AuthController = class AuthController {
         const cookie = req.cookies?.refreshToken;
         return this.authService.logout(cookie, res);
     }
-    async sendOtp(dto) {
-        return this.authService.sendOtp(dto);
+    async sendOtp(dto, req) {
+        return this.authService.sendOtp(dto, req);
     }
     async verifyOtp(dto, res) {
         return this.authService.verifyOtp(dto, res);
@@ -80,8 +80,9 @@ __decorate([
 __decorate([
     (0, common_1.Post)('send-otp'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [send_otp_dto_1.SendOtpDto]),
+    __metadata("design:paramtypes", [send_otp_dto_1.SendOtpDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "sendOtp", null);
 __decorate([
