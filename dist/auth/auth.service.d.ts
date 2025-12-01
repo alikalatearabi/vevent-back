@@ -7,6 +7,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpCacheService } from './services/otp-cache.service';
 import { SmsService } from './services/sms.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { PaymentBypassService } from './services/payment-bypass.service';
 export declare class AuthService {
     private readonly jwtService;
     private readonly prisma;
@@ -14,16 +15,17 @@ export declare class AuthService {
     private readonly otpCacheService;
     private readonly smsService;
     private readonly rateLimitService;
+    private readonly paymentBypassService;
     private readonly logger;
-    constructor(jwtService: JwtService, prisma: PrismaClient, refreshTokenService: RefreshTokenService, otpCacheService: OtpCacheService, smsService: SmsService, rateLimitService: RateLimitService);
+    constructor(jwtService: JwtService, prisma: PrismaClient, refreshTokenService: RefreshTokenService, otpCacheService: OtpCacheService, smsService: SmsService, rateLimitService: RateLimitService, paymentBypassService: PaymentBypassService);
     private getAccessExpiresSeconds;
     private getRefreshExpiresSeconds;
     register(dto: RegisterDto, res: any): Promise<{
         user: {
             id: string;
-            email: string;
             firstname: string;
             lastname: string;
+            email: string;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string;
             isActive: boolean;
@@ -36,9 +38,9 @@ export declare class AuthService {
     login(dto: any, res: any): Promise<{
         user: {
             id: string;
-            email: string;
             firstname: string;
             lastname: string;
+            email: string;
             passwordHash: string;
             phone: string;
             company: string | null;
@@ -46,6 +48,7 @@ export declare class AuthService {
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string | null;
             isActive: boolean;
+            isPaymentFree: boolean;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
@@ -69,9 +72,9 @@ export declare class AuthService {
     };
     validateUserFromJwt(payload: any): Promise<{
         id: string;
-        email: string;
         firstname: string;
         lastname: string;
+        email: string;
         passwordHash: string;
         phone: string;
         company: string | null;
@@ -79,6 +82,7 @@ export declare class AuthService {
         role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        isPaymentFree: boolean;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;

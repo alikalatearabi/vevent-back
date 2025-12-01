@@ -1,9 +1,11 @@
 import { PrismaClient, User, Prisma } from '@prisma/client';
 import { AssetService } from '../common/services/asset.service';
+import { PaymentBypassService } from '../auth/services/payment-bypass.service';
 export declare class UsersService {
     private readonly prisma;
     private readonly assetService;
-    constructor(prisma: PrismaClient, assetService: AssetService);
+    private readonly paymentBypassService;
+    constructor(prisma: PrismaClient, assetService: AssetService, paymentBypassService: PaymentBypassService);
     findById(id: string): Promise<{
         id: string;
         email: string;
@@ -44,6 +46,7 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        isPaymentFree: boolean;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
@@ -60,6 +63,7 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        isPaymentFree: boolean;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
@@ -76,6 +80,7 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
         isActive: boolean;
+        isPaymentFree: boolean;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
@@ -169,6 +174,42 @@ export declare class UsersService {
         data: {
             avatarAssetId: string;
             avatarUrl: string;
+        };
+    }>;
+    setPaymentFreeStatus(userId: string, isPaymentFree: boolean): Promise<{
+        success: boolean;
+        message: string;
+        user: {
+            id: string;
+            phone: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            isPaymentFree: boolean;
+        };
+    }>;
+    getAllPaymentFreeUsers(): Promise<{
+        ownerPhone: string;
+        paymentFreeUsers: {
+            id: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            phone: string;
+            isPaymentFree: boolean;
+        }[];
+        totalCount: number;
+    }>;
+    setPaymentFreeStatusByPhone(phone: string, isPaymentFree: boolean): Promise<{
+        success: boolean;
+        message: string;
+        user: {
+            id: string;
+            phone: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            isPaymentFree: boolean;
         };
     }>;
 }

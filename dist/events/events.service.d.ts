@@ -68,9 +68,9 @@ export declare class EventsService {
         speakers: ({
             user: {
                 id: string;
-                email: string;
                 firstname: string;
                 lastname: string;
+                email: string;
             };
         } & {
             id: string;
@@ -83,8 +83,8 @@ export declare class EventsService {
             tag: {
                 id: string;
                 createdAt: Date;
-                meta: import("@prisma/client/runtime/library").JsonValue | null;
                 name: string;
+                meta: import("@prisma/client/runtime/library").JsonValue | null;
                 title: string | null;
                 color: string | null;
             };

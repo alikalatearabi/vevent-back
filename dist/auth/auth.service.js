@@ -22,14 +22,16 @@ const refresh_token_service_1 = require("./refresh-token.service");
 const otp_cache_service_1 = require("./services/otp-cache.service");
 const sms_service_1 = require("./services/sms.service");
 const rate_limit_service_1 = require("./services/rate-limit.service");
+const payment_bypass_service_1 = require("./services/payment-bypass.service");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, prisma, refreshTokenService, otpCacheService, smsService, rateLimitService) {
+    constructor(jwtService, prisma, refreshTokenService, otpCacheService, smsService, rateLimitService, paymentBypassService) {
         this.jwtService = jwtService;
         this.prisma = prisma;
         this.refreshTokenService = refreshTokenService;
         this.otpCacheService = otpCacheService;
         this.smsService = smsService;
         this.rateLimitService = rateLimitService;
+        this.paymentBypassService = paymentBypassService;
         this.logger = new common_1.Logger(AuthService_1.name);
     }
     getAccessExpiresSeconds() {
@@ -296,9 +298,8 @@ let AuthService = AuthService_1 = class AuthService {
             }),
         ]);
         const isEventRegistered = eventRegistrations > 0;
-        const ownerPhone = process.env.OWNER_PHONE;
-        const isOwner = ownerPhone && user.phone === ownerPhone;
-        const isPaymentComplete = isOwner || completedPayments > 0;
+        const isPaymentFree = await this.paymentBypassService.isPaymentFree(user.phone);
+        const isPaymentComplete = isPaymentFree || completedPayments > 0;
         const accessToken = await this.createAccessToken(user.id);
         const { raw } = await this.refreshTokenService.create(user.id, this.getRefreshExpiresSeconds());
         res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
@@ -327,5 +328,6 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
         refresh_token_service_1.RefreshTokenService,
         otp_cache_service_1.OtpCacheService,
         sms_service_1.SmsService,
-        rate_limit_service_1.RateLimitService])
+        rate_limit_service_1.RateLimitService,
+        payment_bypass_service_1.PaymentBypassService])
 ], AuthService);

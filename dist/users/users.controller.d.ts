@@ -97,4 +97,44 @@ export declare class UsersController {
             avatarUrl: string;
         };
     }>;
+    getAllPaymentFreeUsers(req: any): Promise<{
+        ownerPhone: string;
+        paymentFreeUsers: {
+            id: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            phone: string;
+            isPaymentFree: boolean;
+        }[];
+        totalCount: number;
+    }>;
+    setPaymentFreeStatus(userId: string, dto: {
+        isPaymentFree: boolean;
+    }, req: any): Promise<{
+        success: boolean;
+        message: string;
+        user: {
+            id: string;
+            phone: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            isPaymentFree: boolean;
+        };
+    }>;
+    setPaymentFreeStatusByPhone(phone: string, dto: {
+        isPaymentFree: boolean;
+    }, req: any): Promise<{
+        success: boolean;
+        message: string;
+        user: {
+            id: string;
+            phone: string;
+            email: string;
+            firstname: string;
+            lastname: string;
+            isPaymentFree: boolean;
+        };
+    }>;
 }

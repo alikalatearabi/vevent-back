@@ -42,8 +42,8 @@ export declare class ExhibitorsService {
             tag: {
                 id: string;
                 createdAt: Date;
-                meta: import("@prisma/client/runtime/library").JsonValue | null;
                 name: string;
+                meta: import("@prisma/client/runtime/library").JsonValue | null;
                 title: string | null;
                 color: string | null;
             };
@@ -94,8 +94,8 @@ export declare class ExhibitorsService {
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            metadata: import("@prisma/client/runtime/library").JsonValue | null;
             name: string;
+            metadata: import("@prisma/client/runtime/library").JsonValue | null;
             title: string | null;
             description: string | null;
             exhibitorId: string;

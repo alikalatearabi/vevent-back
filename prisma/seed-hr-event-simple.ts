@@ -85,7 +85,7 @@ async function seedHrAnalyticsEvent() {
         timed: true,
         published: true, // Must be true for people to see and register
         createdById: adminUser.id,
-        price: 50000000,
+        price: 55000000,
         currency: 'IRR'
       }
     });

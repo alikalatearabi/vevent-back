@@ -75,6 +75,15 @@ let UsersController = class UsersController {
         }
         return this.usersService.uploadAvatar(req.user.sub, file);
     }
+    async getAllPaymentFreeUsers(req) {
+        return this.usersService.getAllPaymentFreeUsers();
+    }
+    async setPaymentFreeStatus(userId, dto, req) {
+        return this.usersService.setPaymentFreeStatus(userId, dto.isPaymentFree);
+    }
+    async setPaymentFreeStatusByPhone(phone, dto, req) {
+        return this.usersService.setPaymentFreeStatusByPhone(phone, dto.isPaymentFree);
+    }
 };
 exports.UsersController = UsersController;
 __decorate([
@@ -192,6 +201,66 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "uploadAvatar", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.Get)('admin/payment-free'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all payment-free users (admin only)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of payment-free users' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getAllPaymentFreeUsers", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.Patch)('admin/users/:userId/payment-free'),
+    (0, swagger_1.ApiOperation)({ summary: 'Set payment-free status for a user (admin only)' }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                isPaymentFree: { type: 'boolean' },
+            },
+            required: ['isPaymentFree'],
+        },
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Payment-free status updated' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    __param(0, (0, common_1.Param)('userId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "setPaymentFreeStatus", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.Patch)('admin/users/by-phone/:phone/payment-free'),
+    (0, swagger_1.ApiOperation)({ summary: 'Set payment-free status for a user by phone (admin only)' }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                isPaymentFree: { type: 'boolean' },
+            },
+            required: ['isPaymentFree'],
+        },
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Payment-free status updated' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    __param(0, (0, common_1.Param)('phone')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "setPaymentFreeStatusByPhone", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('Users'),
     (0, common_1.Controller)('api/v1/users'),

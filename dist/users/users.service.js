@@ -17,10 +17,12 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const argon2 = require("argon2");
 const asset_service_1 = require("../common/services/asset.service");
+const payment_bypass_service_1 = require("../auth/services/payment-bypass.service");
 let UsersService = class UsersService {
-    constructor(prisma, assetService) {
+    constructor(prisma, assetService, paymentBypassService) {
         this.prisma = prisma;
         this.assetService = assetService;
+        this.paymentBypassService = paymentBypassService;
     }
     async findById(id) {
         return this.prisma.user.findUnique({
@@ -79,6 +81,7 @@ let UsersService = class UsersService {
                 company: true,
                 jobTitle: true,
                 phone: true,
+                isPaymentFree: true,
             },
         });
         if (!user) {
@@ -101,8 +104,9 @@ let UsersService = class UsersService {
         const isEventRegistered = eventRegistrations > 0;
         const ownerPhone = process.env.OWNER_PHONE;
         const isOwner = ownerPhone && user.phone === ownerPhone;
+        const isPaymentFree = isOwner || user.isPaymentFree === true;
         let isPaymentComplete = false;
-        if (isOwner) {
+        if (isPaymentFree) {
             isPaymentComplete = true;
         }
         else {
@@ -379,11 +383,60 @@ let UsersService = class UsersService {
             },
         };
     }
+    async setPaymentFreeStatus(userId, isPaymentFree) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, phone: true, email: true, firstname: true, lastname: true },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        await this.paymentBypassService.setPaymentFree(userId, isPaymentFree);
+        return {
+            success: true,
+            message: `Payment-free status ${isPaymentFree ? 'enabled' : 'disabled'} for user`,
+            user: {
+                id: user.id,
+                phone: user.phone,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                isPaymentFree,
+            },
+        };
+    }
+    async getAllPaymentFreeUsers() {
+        return this.paymentBypassService.getAllPaymentFreeUsers();
+    }
+    async setPaymentFreeStatusByPhone(phone, isPaymentFree) {
+        const user = await this.prisma.user.findFirst({
+            where: { phone },
+            select: { id: true, phone: true, email: true, firstname: true, lastname: true },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        await this.paymentBypassService.setPaymentFreeByPhone(phone, isPaymentFree);
+        return {
+            success: true,
+            message: `Payment-free status ${isPaymentFree ? 'enabled' : 'disabled'} for user`,
+            user: {
+                id: user.id,
+                phone: user.phone,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                isPaymentFree,
+            },
+        };
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('PRISMA')),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => payment_bypass_service_1.PaymentBypassService))),
     __metadata("design:paramtypes", [client_1.PrismaClient,
-        asset_service_1.AssetService])
+        asset_service_1.AssetService,
+        payment_bypass_service_1.PaymentBypassService])
 ], UsersService);

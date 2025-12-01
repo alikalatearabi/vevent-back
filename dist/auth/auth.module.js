@@ -19,6 +19,7 @@ const refresh_token_service_1 = require("./refresh-token.service");
 const otp_cache_service_1 = require("./services/otp-cache.service");
 const sms_service_1 = require("./services/sms.service");
 const rate_limit_service_1 = require("./services/rate-limit.service");
+const payment_bypass_service_1 = require("./services/payment-bypass.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -28,10 +29,10 @@ exports.AuthModule = AuthModule = __decorate([
             passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             jwt_1.JwtModule.register({}),
             prisma_module_1.PrismaModule,
-            users_module_1.UsersModule,
+            (0, common_1.forwardRef)(() => users_module_1.UsersModule),
         ],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, refresh_token_service_1.RefreshTokenService, otp_cache_service_1.OtpCacheService, sms_service_1.SmsService, rate_limit_service_1.RateLimitService],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, refresh_token_service_1.RefreshTokenService, otp_cache_service_1.OtpCacheService, sms_service_1.SmsService, rate_limit_service_1.RateLimitService, payment_bypass_service_1.PaymentBypassService],
         controllers: [auth_controller_1.AuthController],
-        exports: [auth_service_1.AuthService],
+        exports: [auth_service_1.AuthService, payment_bypass_service_1.PaymentBypassService],
     })
 ], AuthModule);

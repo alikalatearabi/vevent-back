@@ -9,9 +9,9 @@ export declare class AuthController {
     register(dto: RegisterDto, res: any): Promise<{
         user: {
             id: string;
-            email: string;
             firstname: string;
             lastname: string;
+            email: string;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string;
             isActive: boolean;
@@ -24,9 +24,9 @@ export declare class AuthController {
     login(dto: LoginDto, res: any): Promise<{
         user: {
             id: string;
-            email: string;
             firstname: string;
             lastname: string;
+            email: string;
             passwordHash: string;
             phone: string;
             company: string | null;
@@ -34,6 +34,7 @@ export declare class AuthController {
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string | null;
             isActive: boolean;
+            isPaymentFree: boolean;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;

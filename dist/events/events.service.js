@@ -238,11 +238,12 @@ let EventsService = class EventsService {
                 if (exists) {
                     const user = await tx.user.findUnique({
                         where: { id: userId },
-                        select: { phone: true }
+                        select: { phone: true, isPaymentFree: true }
                     });
                     const ownerPhone = process.env.OWNER_PHONE;
                     const isOwner = ownerPhone && user?.phone === ownerPhone;
-                    if (isOwner) {
+                    const isPaymentFree = isOwner || user?.isPaymentFree === true;
+                    if (isPaymentFree) {
                         const existingPayment = await tx.payment.findFirst({
                             where: { userId, eventId: id }
                         });
@@ -255,10 +256,10 @@ let EventsService = class EventsService {
                                     amount: 0,
                                     currency: 'IRR',
                                     status: 'COMPLETED',
-                                    gateway: 'owner-bypass',
-                                    refId: 'OWNER-' + Date.now(),
+                                    gateway: 'payment-free-bypass',
+                                    refId: 'PAYMENT-FREE-' + Date.now(),
                                     paidAt: new Date(),
-                                    metadata: { ownerBypass: true }
+                                    metadata: { paymentFreeBypass: true }
                                 }
                             });
                         }
@@ -284,7 +285,8 @@ let EventsService = class EventsService {
                 });
                 const ownerPhone = process.env.OWNER_PHONE;
                 const isOwner = ownerPhone && user.phone === ownerPhone;
-                if (isOwner) {
+                const isPaymentFree = isOwner || user.isPaymentFree === true;
+                if (isPaymentFree) {
                     await tx.payment.create({
                         data: {
                             userId,
@@ -293,10 +295,10 @@ let EventsService = class EventsService {
                             amount: 0,
                             currency: 'IRR',
                             status: 'COMPLETED',
-                            gateway: 'owner-bypass',
-                            refId: 'OWNER-' + Date.now(),
+                            gateway: 'payment-free-bypass',
+                            refId: 'PAYMENT-FREE-' + Date.now(),
                             paidAt: new Date(),
-                            metadata: { ownerBypass: true }
+                            metadata: { paymentFreeBypass: true }
                         }
                     });
                 }

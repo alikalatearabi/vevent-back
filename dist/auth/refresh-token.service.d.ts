@@ -10,8 +10,8 @@ export declare class RefreshTokenService {
             id: string;
             createdAt: Date;
             userId: string;
-            expiresAt: Date;
             tokenHash: string;
+            expiresAt: Date;
             revoked: boolean;
         };
     }>;
@@ -19,16 +19,16 @@ export declare class RefreshTokenService {
         id: string;
         createdAt: Date;
         userId: string;
-        expiresAt: Date;
         tokenHash: string;
+        expiresAt: Date;
         revoked: boolean;
     }>;
     revoke(id: string): Promise<{
         id: string;
         createdAt: Date;
         userId: string;
-        expiresAt: Date;
         tokenHash: string;
+        expiresAt: Date;
         revoked: boolean;
     }>;
 }
