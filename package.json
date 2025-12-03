@@ -22,6 +22,8 @@
     "remove:payment-free": "ts-node -r tsconfig-paths/register prisma/remove-payment-free.ts",
     "delete:user": "ts-node -r tsconfig-paths/register prisma/delete-user.ts",
     "update:event-price": "ts-node -r tsconfig-paths/register prisma/update-event-price.ts",
+    "register:speakers": "ts-node -r tsconfig-paths/register prisma/register-speakers.ts",
+    "register:for-event": "ts-node -r tsconfig-paths/register prisma/register-user-for-event.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

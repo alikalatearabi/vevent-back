@@ -7,7 +7,6 @@ export class PaymentBypassService {
 
   // List of speaker phone numbers (normalized to 09xxxxxxxxx format)
   private readonly speakerPhones = new Set([
-    '09123046863', // Test user
     '09123228016',
     '09123008549',
     '09128920816',
@@ -37,6 +36,7 @@ export class PaymentBypassService {
     '09191574158', // پرستو فیضی
     '09194988653',
     '09121201717',
+    '09024634361',
   ]);
 
   constructor(
