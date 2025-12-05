@@ -26,6 +26,7 @@ let EventsService = class EventsService {
         const limit = Math.min(opts.limit || 20, 200);
         const skip = (page - 1) * limit;
         const where = { deletedAt: null };
+        where.name = { not: 'hr-analytics-event-2025' };
         if (opts.published !== undefined) {
             where.published = opts.published;
         }

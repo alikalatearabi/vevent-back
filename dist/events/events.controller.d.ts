@@ -97,16 +97,16 @@ export declare class EventsController {
             asset: {
                 id: string;
                 createdAt: Date;
-                createdBy: string | null;
                 deletedAt: Date | null;
+                createdBy: string | null;
+                url: string;
                 type: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
-                url: string;
             };
         } & {
             id: string;
-            eventId: string;
             role: string | null;
+            eventId: string;
             assetId: string;
         })[];
         attendees: {
@@ -122,11 +122,11 @@ export declare class EventsController {
                 asset: {
                     id: string;
                     createdAt: Date;
-                    createdBy: string | null;
                     deletedAt: Date | null;
+                    createdBy: string | null;
+                    url: string;
                     type: string | null;
                     meta: import("@prisma/client/runtime/library").JsonValue | null;
-                    url: string;
                 };
             } & {
                 id: string;
@@ -144,18 +144,18 @@ export declare class EventsController {
             };
         } & {
             id: string;
-            eventId: string;
-            userId: string;
             role: string | null;
+            userId: string;
+            eventId: string;
             order: number | null;
         })[];
         tags: ({
             tag: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 title: string | null;
                 color: string | null;
+                createdAt: Date;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
             };
         } & {
@@ -165,12 +165,9 @@ export declare class EventsController {
         })[];
     } & {
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -181,16 +178,16 @@ export declare class EventsController {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     create(dto: CreateEventDto, req: any): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -201,16 +198,16 @@ export declare class EventsController {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     update(id: string, dto: UpdateEventDto, req: any): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -221,16 +218,16 @@ export declare class EventsController {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     patch(id: string, dto: UpdateEventDto, req: any): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -241,21 +238,24 @@ export declare class EventsController {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     register(id: string, dto: RegisterAttendeeDto, req: any): Promise<{
         id: string;
-        eventId: string;
         createdAt: Date;
-        userId: string | null;
-        metadata: import("@prisma/client/runtime/library").JsonValue | null;
         email: string | null;
         phone: string | null;
         company: string | null;
         jobTitle: string | null;
         role: import(".prisma/client").$Enums.AttendeeRole;
+        userId: string | null;
+        eventId: string;
         ticketType: string | null;
         checkedIn: boolean;
+        metadata: import("@prisma/client/runtime/library").JsonValue | null;
         avatar: string | null;
         firstName: string;
         lastName: string;

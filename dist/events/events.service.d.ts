@@ -27,16 +27,16 @@ export declare class EventsService {
             asset: {
                 id: string;
                 createdAt: Date;
-                createdBy: string | null;
                 deletedAt: Date | null;
+                createdBy: string | null;
+                url: string;
                 type: string | null;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
-                url: string;
             };
         } & {
             id: string;
-            eventId: string;
             role: string | null;
+            eventId: string;
             assetId: string;
         })[];
         attendees: {
@@ -52,11 +52,11 @@ export declare class EventsService {
                 asset: {
                     id: string;
                     createdAt: Date;
-                    createdBy: string | null;
                     deletedAt: Date | null;
+                    createdBy: string | null;
+                    url: string;
                     type: string | null;
                     meta: import("@prisma/client/runtime/library").JsonValue | null;
-                    url: string;
                 };
             } & {
                 id: string;
@@ -74,18 +74,18 @@ export declare class EventsService {
             };
         } & {
             id: string;
-            eventId: string;
-            userId: string;
             role: string | null;
+            userId: string;
+            eventId: string;
             order: number | null;
         })[];
         tags: ({
             tag: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 title: string | null;
                 color: string | null;
+                createdAt: Date;
                 meta: import("@prisma/client/runtime/library").JsonValue | null;
             };
         } & {
@@ -95,12 +95,9 @@ export declare class EventsService {
         })[];
     } & {
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -111,6 +108,9 @@ export declare class EventsService {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     getEventSpeakers(eventId: string): Promise<{
@@ -128,12 +128,9 @@ export declare class EventsService {
     }>;
     create(data: any, userId?: string): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -144,16 +141,16 @@ export declare class EventsService {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     update(id: string, data: any): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -164,16 +161,16 @@ export declare class EventsService {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     softDelete(id: string): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string | null;
         name: string;
         title: string;
+        description: string | null;
         color: string | null;
         start: Date;
         end: Date;
@@ -184,21 +181,24 @@ export declare class EventsService {
         published: boolean;
         price: import("@prisma/client/runtime/library").Decimal | null;
         currency: string | null;
+        createdById: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     register(id: string, payload: any): Promise<{
         id: string;
-        eventId: string;
         createdAt: Date;
-        userId: string | null;
-        metadata: import("@prisma/client/runtime/library").JsonValue | null;
         email: string | null;
         phone: string | null;
         company: string | null;
         jobTitle: string | null;
         role: import(".prisma/client").$Enums.AttendeeRole;
+        userId: string | null;
+        eventId: string;
         ticketType: string | null;
         checkedIn: boolean;
+        metadata: import("@prisma/client/runtime/library").JsonValue | null;
         avatar: string | null;
         firstName: string;
         lastName: string;

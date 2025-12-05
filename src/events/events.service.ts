@@ -14,6 +14,9 @@ export class EventsService {
     const skip = (page - 1) * limit;
 
     const where: any = { deletedAt: null };
+    // Exclude the main HR Analytics event (it's a container event, not a session)
+    where.name = { not: 'hr-analytics-event-2025' };
+    
     // Handle published filter - default to true if not specified
     if (opts.published !== undefined) {
       where.published = opts.published;
