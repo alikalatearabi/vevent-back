@@ -279,6 +279,7 @@ let AuthService = AuthService_1 = class AuthService {
                 },
             });
         }
+        await this.paymentBypassService.autoSetPaymentFreeIfSpeaker(user.phone);
         const isProfileComplete = !!(user.firstname &&
             user.firstname.trim().length > 0 &&
             user.lastname &&

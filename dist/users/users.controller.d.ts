@@ -29,10 +29,10 @@ export declare class UsersController {
             userRole: string;
             registrationDate: Date;
             id: string;
+            description: string;
             createdAt: Date;
             name: string;
             title: string;
-            description: string;
             color: string;
             start: Date;
             end: Date;
@@ -55,17 +55,17 @@ export declare class UsersController {
             isEventRegistered: boolean;
             isPaymentComplete: boolean;
             id: string;
-            email: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             firstname: string;
             lastname: string;
+            email: string;
             phone: string;
             company: string;
             jobTitle: string;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     completeProfilePost(req: any, dto: CompleteProfileDto): Promise<{
@@ -76,17 +76,17 @@ export declare class UsersController {
             isEventRegistered: boolean;
             isPaymentComplete: boolean;
             id: string;
-            email: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             firstname: string;
             lastname: string;
+            email: string;
             phone: string;
             company: string;
             jobTitle: string;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     uploadAvatar(req: any, file: Express.Multer.File): Promise<{
@@ -99,11 +99,12 @@ export declare class UsersController {
     }>;
     getAllPaymentFreeUsers(req: any): Promise<{
         ownerPhone: string;
+        speakerPhones: string[];
         paymentFreeUsers: {
             id: string;
-            email: string;
             firstname: string;
             lastname: string;
+            email: string;
             phone: string;
             isPaymentFree: boolean;
         }[];

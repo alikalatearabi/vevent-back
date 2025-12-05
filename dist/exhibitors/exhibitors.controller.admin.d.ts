@@ -8,28 +8,28 @@ export declare class ExhibitorsAdminController {
     constructor(exhibitorsService: ExhibitorsService, assetService: AssetService);
     create(dto: CreateExhibitorDto, req: any, res: any): Promise<{
         id: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
+        createdById: string | null;
         name: string;
         title: string | null;
-        description: string | null;
         location: string | null;
-        createdById: string | null;
+        deletedAt: Date | null;
         website: string | null;
         sponsor: boolean;
         favoriteCount: number;
     }>;
     update(id: string, dto: UpdateExhibitorDto, req: any): Promise<{
         id: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
+        createdById: string | null;
         name: string;
         title: string | null;
-        description: string | null;
         location: string | null;
-        createdById: string | null;
+        deletedAt: Date | null;
         website: string | null;
         sponsor: boolean;
         favoriteCount: number;

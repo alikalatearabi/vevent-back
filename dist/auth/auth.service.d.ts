@@ -23,21 +23,25 @@ export declare class AuthService {
     register(dto: RegisterDto, res: any): Promise<{
         user: {
             id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date;
             firstname: string;
             lastname: string;
             email: string;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
         };
         accessToken: string;
     }>;
     login(dto: any, res: any): Promise<{
         user: {
             id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
             firstname: string;
             lastname: string;
             email: string;
@@ -47,11 +51,7 @@ export declare class AuthService {
             jobTitle: string | null;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string | null;
-            isActive: boolean;
             isPaymentFree: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
         };
         accessToken: string;
     }>;
@@ -72,6 +72,10 @@ export declare class AuthService {
     };
     validateUserFromJwt(payload: any): Promise<{
         id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         firstname: string;
         lastname: string;
         email: string;
@@ -81,11 +85,7 @@ export declare class AuthService {
         jobTitle: string | null;
         role: import(".prisma/client").$Enums.Role;
         avatarAssetId: string | null;
-        isActive: boolean;
         isPaymentFree: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     sendOtp(dto: SendOtpDto, req?: any): Promise<{
         success: boolean;

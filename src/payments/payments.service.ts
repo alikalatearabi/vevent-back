@@ -4,6 +4,7 @@ import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { PaymentGatewayService } from './services/payment-gateway.service';
 import { UsersService } from '../users/users.service';
+import { DiscountCodesService } from '../discount-codes/discount-codes.service';
 
 @Injectable()
 export class PaymentsService {
@@ -15,6 +16,7 @@ export class PaymentsService {
     @Inject('PRISMA') private readonly prisma: PrismaClient,
     private readonly paymentGatewayService: PaymentGatewayService,
     @Inject(forwardRef(() => UsersService)) private readonly usersService: UsersService,
+    private readonly discountCodesService: DiscountCodesService,
   ) {}
 
   /**
@@ -24,7 +26,7 @@ export class PaymentsService {
    * @returns Payment response with paymentId, paymentUrl, etc.
    */
   async initiatePayment(userId: string, dto: InitiatePaymentDto) {
-    const { eventId } = dto;
+    const { eventId, discountCode } = dto;
 
     this.logger.log(`[Payment Initiation] Starting payment process for userId: ${userId}, eventId: ${eventId}`);
 
@@ -291,8 +293,32 @@ export class PaymentsService {
     this.logger.debug(`[Payment Initiation] Step 6: Calculating payment amount`);
     const eventPrice = event.price ? parseFloat(event.price.toString()) : this.defaultEventPrice;
     const eventCurrency = event.currency || this.currency;
-    const amount = eventPrice;
-    this.logger.log(`[Payment Initiation] Step 6: Payment amount: ${amount} ${eventCurrency} (from ${event.price ? 'event' : 'default'})`);
+    let originalAmount = eventPrice;
+    let finalAmount = originalAmount;
+    let discountAmount = 0;
+
+    // 6.1. Apply discount code if provided
+    if (discountCode) {
+      this.logger.debug(`[Payment Initiation] Step 6.1: Validating discount code: ${discountCode}`);
+      try {
+        const validation = await this.discountCodesService.validate({
+          code: discountCode,
+          eventId,
+          amount: originalAmount,
+        });
+
+        if (validation.valid && validation.data) {
+          discountAmount = validation.data.discountAmount;
+          finalAmount = validation.data.finalAmount;
+          this.logger.log(`[Payment Initiation] Step 6.1: Discount applied - Original: ${originalAmount}, Discount: ${discountAmount}, Final: ${finalAmount}`);
+        }
+      } catch (error) {
+        this.logger.error(`[Payment Initiation] Step 6.1: Discount code validation failed: ${error.message}`);
+        throw error;
+      }
+    }
+
+    this.logger.log(`[Payment Initiation] Step 6: Payment amount: ${finalAmount} ${eventCurrency} (Original: ${originalAmount}, Discount: ${discountAmount})`);
 
     // 7. Create payment record
     this.logger.debug(`[Payment Initiation] Step 7: Creating payment record in database`);
@@ -301,13 +327,38 @@ export class PaymentsService {
         userId,
         eventId,
         attendeeId: attendee.id,
-        amount,
+        amount: finalAmount, // Store final amount after discount
         currency: this.currency,
         status: PaymentStatus.PENDING,
+        metadata: discountCode ? {
+          originalAmount,
+          discountCode,
+          discountAmount,
+          finalAmount,
+        } : undefined,
       },
     });
 
     this.logger.log(`[Payment Initiation] Step 7: Payment record created (ID: ${payment.id})`);
+
+    // 7.1. Apply discount code usage if discount code was provided
+    if (discountCode) {
+      this.logger.debug(`[Payment Initiation] Step 7.1: Applying discount code usage`);
+      try {
+        await this.discountCodesService.applyDiscountCode(
+          discountCode,
+          userId,
+          payment.id,
+          eventId,
+          originalAmount,
+        );
+        this.logger.log(`[Payment Initiation] Step 7.1: Discount code usage recorded`);
+      } catch (error) {
+        this.logger.error(`[Payment Initiation] Step 7.1: Failed to apply discount code usage: ${error.message}`);
+        // Don't fail the payment if discount code usage fails, but log it
+        // The discount was already validated, so we continue with the payment
+      }
+    }
 
     // 8. Initiate payment gateway
     this.logger.debug(`[Payment Initiation] Step 8: Initiating payment gateway`);
@@ -320,8 +371,8 @@ export class PaymentsService {
       this.logger.debug(`[Payment Initiation] Step 8: Calling payment gateway service`);
 
       const gatewayResponse = await this.paymentGatewayService.initiatePayment({
-        amount,
-        description: `پرداخت هزینه رویداد: ${event.title}`,
+        amount: finalAmount, // Use final amount after discount
+        description: `پرداخت هزینه رویداد: ${event.title}${discountCode ? ` (با کد تخفیف: ${discountCode})` : ''}`,
         callbackUrl,
         metadata: {
           eventId: event.id,
@@ -330,6 +381,11 @@ export class PaymentsService {
           userId,
           attendeeId: attendee.id,
           paymentId: payment.id, // Add paymentId to metadata for factorId
+          ...(discountCode && {
+            discountCode,
+            originalAmount,
+            discountAmount,
+          }),
         },
       });
 

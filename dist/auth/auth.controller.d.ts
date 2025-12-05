@@ -9,21 +9,25 @@ export declare class AuthController {
     register(dto: RegisterDto, res: any): Promise<{
         user: {
             id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date;
             firstname: string;
             lastname: string;
             email: string;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
         };
         accessToken: string;
     }>;
     login(dto: LoginDto, res: any): Promise<{
         user: {
             id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
             firstname: string;
             lastname: string;
             email: string;
@@ -33,11 +37,7 @@ export declare class AuthController {
             jobTitle: string | null;
             role: import(".prisma/client").$Enums.Role;
             avatarAssetId: string | null;
-            isActive: boolean;
             isPaymentFree: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
         };
         accessToken: string;
     }>;

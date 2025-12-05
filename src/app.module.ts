@@ -7,6 +7,7 @@ import { ExhibitorsModule } from './exhibitors/exhibitors.module';
 import { EventsModule } from './events/events.module';
 import { AttendeesModule } from './attendees/attendees.module';
 import { PaymentsModule } from './payments/payments.module';
+import { DiscountCodesModule } from './discount-codes/discount-codes.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 
@@ -41,6 +42,7 @@ class AppController {
     EventsModule, 
     AttendeesModule,
     PaymentsModule,
+    DiscountCodesModule,
     ProductsModule, 
     PrismaModule
   ],
