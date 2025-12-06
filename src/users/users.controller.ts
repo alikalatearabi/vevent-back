@@ -1,7 +1,7 @@
 import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile, Patch, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { CreateRecentDto } from './dto/create-recent.dto';
@@ -192,17 +192,13 @@ export class UsersController {
     return this.usersService.setPaymentFreeStatusByPhone(phone, dto.isPaymentFree);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access-token')
   @Get('admin/registration-statistics')
-  @ApiOperation({ summary: 'Get user registration and payment statistics (admin only)' })
+  @ApiOperation({ summary: 'Get user registration and payment statistics' })
+  @ApiQuery({ name: 'eventId', required: false, description: 'Optional event ID to filter statistics by specific event' })
   @ApiResponse({ status: 200, description: 'Registration statistics' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRegistrationStatistics(
-    @Req() req: any,
     @Query('eventId') eventId?: string,
   ) {
-    // TODO: Add admin role check
     return this.usersService.getRegistrationStatistics(eventId);
   }
 }
