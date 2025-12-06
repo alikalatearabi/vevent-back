@@ -1,4 +1,5 @@
-import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile, Patch, Query } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile, Patch, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
@@ -193,12 +194,66 @@ export class UsersController {
   }
 
   @Get('admin/registration-statistics')
-  @ApiOperation({ summary: 'Get user registration and payment statistics' })
+  @ApiOperation({ summary: 'Get user registration and payment statistics (CSV format)' })
   @ApiQuery({ name: 'eventId', required: false, description: 'Optional event ID to filter statistics by specific event' })
-  @ApiResponse({ status: 200, description: 'Registration statistics' })
+  @ApiResponse({ status: 200, description: 'Registration statistics in CSV format' })
   async getRegistrationStatistics(
     @Query('eventId') eventId?: string,
+    @Res() res: Response,
   ) {
-    return this.usersService.getRegistrationStatistics(eventId);
+    const statistics = await this.usersService.getRegistrationStatistics(eventId);
+    const csv = this.convertStatisticsToCsv(statistics);
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="registration-statistics-${Date.now()}.csv"`);
+    res.send(csv);
+  }
+
+  /**
+   * Convert statistics data to CSV format
+   */
+  private convertStatisticsToCsv(statistics: any): string {
+    const escapeCsvField = (field: any): string => {
+      if (field === null || field === undefined) {
+        return '';
+      }
+      const str = String(field);
+      // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const lines: string[] = [];
+    
+    // Header row
+    lines.push('Category,ID,Phone,Firstname,Lastname,Email,CreatedAt,PaymentCount,AttendeeCount,HasPayment');
+    
+    // Helper to add user rows
+    const addUserRows = (users: any[], category: string) => {
+      for (const user of users) {
+        const row = [
+          category,
+          escapeCsvField(user.id),
+          escapeCsvField(user.phone),
+          escapeCsvField(user.firstname),
+          escapeCsvField(user.lastname),
+          escapeCsvField(user.email),
+          escapeCsvField(user.createdAt ? new Date(user.createdAt).toISOString() : ''),
+          escapeCsvField(user.paymentCount || ''),
+          escapeCsvField(user.attendeeCount || ''),
+          escapeCsvField(user.hasPayment !== undefined ? user.hasPayment : ''),
+        ];
+        lines.push(row.join(','));
+      }
+    };
+    
+    // Add users from each category
+    addUserRows(statistics.statistics.passedOtpNotRegistered.users, 'Passed OTP - Not Registered');
+    addUserRows(statistics.statistics.registered.users, 'Registered - Not Paid');
+    addUserRows(statistics.statistics.registeredAndPaid.users, 'Registered and Paid');
+    
+    return lines.join('\n');
   }
 }
