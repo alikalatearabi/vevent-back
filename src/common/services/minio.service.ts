@@ -88,10 +88,21 @@ export class MinioService implements OnModuleInit {
         },
       );
 
-      // Generate public URL
-      const protocol = this.configService.get('MINIO_USE_SSL', 'false') === 'true' ? 'https' : 'http';
-      const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
-      const url = `${protocol}://${endpoint}/${this.bucketName}/${objectKey}`;
+      // Generate public URL - use MINIO_PUBLIC_URL if set, otherwise construct from endpoint
+      const publicUrl = this.configService.get('MINIO_PUBLIC_URL');
+      let url: string;
+      
+      if (publicUrl) {
+        // Use explicit public URL (useful when MinIO is behind reverse proxy with SSL)
+        // Remove trailing slash if present
+        const baseUrl = publicUrl.replace(/\/$/, '');
+        url = `${baseUrl}/${this.bucketName}/${objectKey}`;
+      } else {
+        // Fall back to constructing URL from endpoint
+        const protocol = this.configService.get('MINIO_USE_SSL', 'false') === 'true' ? 'https' : 'http';
+        const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
+        url = `${protocol}://${endpoint}/${this.bucketName}/${objectKey}`;
+      }
 
       this.logger.log(`File uploaded successfully: ${objectKey}`);
 
