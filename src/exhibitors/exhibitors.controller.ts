@@ -25,7 +25,8 @@ export class ExhibitorsController {
     const e = await this.exhibitorsService.findById(id);
     if (!e) throw new NotFoundException();
     const cover = e.assets?.find((a: any) => a.role === 'cover')?.asset?.url || null;
-    const images = e.assets?.filter((a: any) => a.role !== 'cover').map((a: any) => a.asset?.url) || [];
+    const logo = e.assets?.find((a: any) => a.role === 'logo')?.asset?.url || null;
+    const images = e.assets?.filter((a: any) => a.role !== 'cover' && a.role !== 'logo').map((a: any) => a.asset?.url) || [];
 
     return {
       id: e.id,
@@ -34,6 +35,7 @@ export class ExhibitorsController {
       description: e.description,
       website: e.website,
       coverUrl: cover,
+      logoUrl: logo,
       images,
       location: e.location,
       sponsor: e.sponsor,

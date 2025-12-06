@@ -41,7 +41,18 @@ export class ExhibitorsService {
           sponsor: true,
           website: true,
           favoriteCount: true,
-          assets: { where: { role: 'cover' }, select: { asset: { select: { url: true } } } },
+          assets: {
+            where: {
+              OR: [
+                { role: 'cover' },
+                { role: 'logo' },
+              ],
+            },
+            select: {
+              role: true,
+              asset: { select: { url: true } },
+            },
+          },
           tags: { select: { tag: true } },
         },
         orderBy: opts.sort ? { [opts.sort]: 'desc' } : { favoriteCount: 'desc' },
@@ -49,18 +60,24 @@ export class ExhibitorsService {
       this.prisma.exhibitor.count({ where }),
     ]);
 
-    const formatted = data.map((e: any) => ({
-      id: e.id,
-      name: e.name,
-      title: e.title,
-      description: e.description,
-      location: e.location,
-      sponsor: e.sponsor,
-      website: e.website,
-      favoriteCount: e.favoriteCount,
-      coverUrl: e.assets?.[0]?.asset?.url || null,
-      tags: e.tags?.map((t: any) => t.tag) || [],
-    }));
+    const formatted = data.map((e: any) => {
+      const coverAsset = e.assets?.find((a: any) => a.role === 'cover');
+      const logoAsset = e.assets?.find((a: any) => a.role === 'logo');
+      
+      return {
+        id: e.id,
+        name: e.name,
+        title: e.title,
+        description: e.description,
+        location: e.location,
+        sponsor: e.sponsor,
+        website: e.website,
+        favoriteCount: e.favoriteCount,
+        coverUrl: coverAsset?.asset?.url || null,
+        logoUrl: logoAsset?.asset?.url || null,
+        tags: e.tags?.map((t: any) => t.tag) || [],
+      };
+    });
 
     return { data: formatted, meta: { page, limit, total } };
   }

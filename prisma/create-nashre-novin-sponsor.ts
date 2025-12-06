@@ -90,9 +90,9 @@ async function createSponsor() {
     console.log(`Exhibitor ID: ${exhibitorId}`);
     console.log('');
 
-    // Update the asset role to 'cover' so it appears in the API response
+    // Update the asset role to 'logo' so it appears as logoUrl in the API response
     // The current endpoint sets role to 'gallery' by default
-    // The API looks for assets with role 'cover' to display as coverUrl
+    // The API looks for assets with role 'logo' to display as logoUrl
     if (uploadResponse.data.assets && uploadResponse.data.assets.length > 0) {
       const assetId = uploadResponse.data.assets[0].id;
       const assetLink = await prisma.assetOnExhibitor.findFirst({
@@ -102,12 +102,12 @@ async function createSponsor() {
         },
       });
 
-      if (assetLink && assetLink.role !== 'cover') {
+      if (assetLink && assetLink.role !== 'logo') {
         await prisma.assetOnExhibitor.update({
           where: { id: assetLink.id },
-          data: { role: 'cover' },
+          data: { role: 'logo' },
         });
-        console.log('✅ Updated asset role to "cover"');
+        console.log('✅ Updated asset role to "logo"');
       }
     }
 

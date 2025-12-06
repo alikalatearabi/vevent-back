@@ -198,8 +198,8 @@ export class UsersController {
   @ApiQuery({ name: 'eventId', required: false, description: 'Optional event ID to filter statistics by specific event' })
   @ApiResponse({ status: 200, description: 'Registration statistics in CSV format' })
   async getRegistrationStatistics(
-    @Query('eventId') eventId?: string,
     @Res() res: Response,
+    @Query('eventId') eventId?: string,
   ) {
     const statistics = await this.usersService.getRegistrationStatistics(eventId);
     const csv = this.convertStatisticsToCsv(statistics);
