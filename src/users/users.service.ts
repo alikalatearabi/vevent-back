@@ -536,4 +536,126 @@ export class UsersService {
       },
     };
   }
+
+  /**
+   * Get user registration and payment statistics (admin only)
+   * @param eventId Optional event ID to filter by specific event
+   * @returns Statistics about users who passed OTP, registered, and paid
+   */
+  async getRegistrationStatistics(eventId?: string) {
+    // Helper to check if profile is complete
+    const isProfileComplete = (user: any) => {
+      return !!(
+        user.firstname &&
+        user.firstname.trim().length > 0 &&
+        user.firstname !== 'کاربر' &&
+        user.lastname &&
+        user.lastname.trim().length > 0 &&
+        user.lastname !== 'جدید' &&
+        user.email &&
+        user.email.trim().length > 0 &&
+        !user.email.includes('@vevent.temp')
+      );
+    };
+
+    // Get all users (excluding deleted)
+    const allUsers = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        phone: true,
+        firstname: true,
+        lastname: true,
+        email: true,
+        createdAt: true,
+        payments: eventId
+          ? {
+              where: {
+                eventId,
+                status: 'COMPLETED',
+              },
+            }
+          : {
+              where: {
+                status: 'COMPLETED',
+              },
+            },
+        attendees: eventId
+          ? {
+              where: {
+                eventId,
+              },
+            }
+          : true,
+      },
+    });
+
+    // Categorize users
+    const passedOtpNotRegistered: any[] = [];
+    const registered: any[] = [];
+    const registeredAndPaid: any[] = [];
+
+    for (const user of allUsers) {
+      const profileComplete = isProfileComplete(user);
+      const hasCompletedPayment = user.payments.length > 0;
+
+      if (!profileComplete) {
+        // Passed OTP but didn't complete registration
+        passedOtpNotRegistered.push({
+          id: user.id,
+          phone: user.phone,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          createdAt: user.createdAt,
+          hasPayment: hasCompletedPayment,
+        });
+      } else if (hasCompletedPayment) {
+        // Registered and paid
+        registeredAndPaid.push({
+          id: user.id,
+          phone: user.phone,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          createdAt: user.createdAt,
+          paymentCount: user.payments.length,
+          attendeeCount: user.attendees.length,
+        });
+      } else {
+        // Registered but not paid
+        registered.push({
+          id: user.id,
+          phone: user.phone,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          createdAt: user.createdAt,
+          attendeeCount: user.attendees.length,
+        });
+      }
+    }
+
+    return {
+      success: true,
+      statistics: {
+        total: allUsers.length,
+        passedOtpNotRegistered: {
+          count: passedOtpNotRegistered.length,
+          users: passedOtpNotRegistered,
+        },
+        registered: {
+          count: registered.length,
+          users: registered,
+        },
+        registeredAndPaid: {
+          count: registeredAndPaid.length,
+          users: registeredAndPaid,
+        },
+      },
+      eventId: eventId || null,
+    };
+  }
 }

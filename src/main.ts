@@ -54,7 +54,7 @@ async function bootstrap() {
       'http://localhost:3000',
       'http://185.149.192.60:3000',
       'https://veventexpo.ir',
-      'https://www.veventexpo.ir'
+      'https://www.veventexpo.ir',
     ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

@@ -25,6 +25,7 @@
     "update:event-price": "ts-node -r tsconfig-paths/register prisma/update-event-price.ts",
     "register:speakers": "ts-node -r tsconfig-paths/register prisma/register-speakers.ts",
     "register:for-event": "ts-node -r tsconfig-paths/register prisma/register-user-for-event.ts",
+    "generate:discount-codes": "ts-node -r tsconfig-paths/register prisma/generate-bulk-discount-codes.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

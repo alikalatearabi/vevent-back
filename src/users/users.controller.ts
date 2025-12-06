@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile, Patch } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Delete, Param, Put, BadRequestException, NotFoundException, UseInterceptors, UploadedFile, Patch, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -190,5 +190,19 @@ export class UsersController {
   ) {
     // TODO: Add admin role check
     return this.usersService.setPaymentFreeStatusByPhone(phone, dto.isPaymentFree);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Get('admin/registration-statistics')
+  @ApiOperation({ summary: 'Get user registration and payment statistics (admin only)' })
+  @ApiResponse({ status: 200, description: 'Registration statistics' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRegistrationStatistics(
+    @Req() req: any,
+    @Query('eventId') eventId?: string,
+  ) {
+    // TODO: Add admin role check
+    return this.usersService.getRegistrationStatistics(eventId);
   }
 }
