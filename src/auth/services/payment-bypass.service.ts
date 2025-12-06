@@ -37,6 +37,7 @@ export class PaymentBypassService {
     '09194988653',
     '09121201717',
     '09024634361',
+    '09155203073',
   ]);
 
   constructor(

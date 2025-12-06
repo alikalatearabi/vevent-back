@@ -26,6 +26,7 @@
     "register:speakers": "ts-node -r tsconfig-paths/register prisma/register-speakers.ts",
     "register:for-event": "ts-node -r tsconfig-paths/register prisma/register-user-for-event.ts",
     "generate:discount-codes": "ts-node -r tsconfig-paths/register prisma/generate-bulk-discount-codes.ts",
+    "fix:asset-urls": "ts-node -r tsconfig-paths/register prisma/fix-asset-urls.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
