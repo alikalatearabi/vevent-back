@@ -27,6 +27,7 @@
     "register:for-event": "ts-node -r tsconfig-paths/register prisma/register-user-for-event.ts",
     "generate:discount-codes": "ts-node -r tsconfig-paths/register prisma/generate-bulk-discount-codes.ts",
     "fix:asset-urls": "ts-node -r tsconfig-paths/register prisma/fix-asset-urls.ts",
+    "update:asset-urls-subdomain": "ts-node -r tsconfig-paths/register prisma/update-asset-urls-to-subdomain.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

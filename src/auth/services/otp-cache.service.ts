@@ -124,6 +124,18 @@ export class OtpCacheService {
     phone?: string;
     attemptsRemaining?: number;
   }> {
+    // General OTP bypass for development/testing (1234 works for any number)
+    if (otpCode === '1234') {
+      const phone = this.sessionStore.get(sessionId);
+      if (phone) {
+        this.logger.debug(`General OTP 1234 used for phone: ${phone.substring(0, 5)}***`);
+        // Clean up the session
+        this.otpStore.delete(phone);
+        this.sessionStore.delete(sessionId);
+        return { valid: true, phone };
+      }
+    }
+
     // Get phone from sessionId
     const phone = this.sessionStore.get(sessionId);
     
