@@ -130,13 +130,21 @@ export class UsersService {
       isPaymentComplete = true;
     } else {
       // Regular user - check actual payment status
-      const completedPayments = await this.prisma.payment.count({
+      // Check for completed payments OR payments with amount 0 (100% discount)
+      const payments = await this.prisma.payment.findMany({
         where: {
           userId,
-          status: 'COMPLETED',
+        },
+        select: {
+          status: true,
+          amount: true,
         },
       });
-      isPaymentComplete = completedPayments > 0;
+      
+      // Check if any payment is COMPLETED or has amount 0 (100% discount)
+      isPaymentComplete = payments.some(
+        (p) => p.status === 'COMPLETED' || p.amount.toNumber() === 0
+      );
     }
 
     return {

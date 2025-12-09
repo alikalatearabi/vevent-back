@@ -320,6 +320,12 @@ export class PaymentsService {
 
     this.logger.log(`[Payment Initiation] Step 6: Payment amount: ${finalAmount} ${eventCurrency} (Original: ${originalAmount}, Discount: ${discountAmount})`);
 
+    // 6.5. Check if final amount is 0 (100% discount or free event)
+    const isFreePayment = finalAmount === 0;
+    if (isFreePayment) {
+      this.logger.log(`[Payment Initiation] Step 6.5: Final amount is 0 - marking payment as COMPLETED automatically`);
+    }
+
     // 7. Create payment record
     this.logger.debug(`[Payment Initiation] Step 7: Creating payment record in database`);
     const payment = await this.prisma.payment.create({
@@ -329,17 +335,23 @@ export class PaymentsService {
         attendeeId: attendee.id,
         amount: finalAmount, // Store final amount after discount
         currency: this.currency,
-        status: PaymentStatus.PENDING,
+        status: isFreePayment ? PaymentStatus.COMPLETED : PaymentStatus.PENDING,
+        paidAt: isFreePayment ? new Date() : undefined,
+        gateway: isFreePayment ? 'free-payment' : undefined,
+        refId: isFreePayment ? `FREE-${Date.now()}` : undefined,
         metadata: discountCode ? {
           originalAmount,
           discountCode,
           discountAmount,
           finalAmount,
-        } : undefined,
+          autoCompleted: isFreePayment,
+        } : (isFreePayment ? {
+          autoCompleted: true,
+        } : undefined),
       },
     });
 
-    this.logger.log(`[Payment Initiation] Step 7: Payment record created (ID: ${payment.id})`);
+    this.logger.log(`[Payment Initiation] Step 7: Payment record created (ID: ${payment.id}, Status: ${payment.status})`);
 
     // 7.1. Apply discount code usage if discount code was provided
     if (discountCode) {
@@ -358,6 +370,22 @@ export class PaymentsService {
         // Don't fail the payment if discount code usage fails, but log it
         // The discount was already validated, so we continue with the payment
       }
+    }
+
+    // 7.5. If payment is free (amount = 0), skip gateway and return completed payment
+    if (isFreePayment) {
+      this.logger.log(`[Payment Initiation] Step 7.5: Payment is free - skipping gateway initiation`);
+      return {
+        success: true,
+        paymentId: payment.id,
+        paymentUrl: null,
+        status: 'completed',
+        amount: 0,
+        currency: payment.currency,
+        gateway: 'free-payment',
+        authority: null,
+        message: 'پرداخت با موفقیت انجام شد (رایگان)',
+      };
     }
 
     // 8. Initiate payment gateway
