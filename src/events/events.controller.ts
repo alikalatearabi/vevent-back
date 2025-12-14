@@ -7,11 +7,15 @@ import { RegisterAttendeeDto } from './dto/register-attendee.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { MinioService } from '../common/services/minio.service';
 
 @ApiTags('Events')
 @Controller('api/v1/events')
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly minioService: MinioService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List events' })
@@ -33,6 +37,24 @@ export class EventsController {
   @ApiResponse({ status: 404, description: 'No active event found' })
   async getActiveEvent() {
     return this.eventsService.getCurrentEvent();
+  }
+
+  @Get('hr-event/files')
+  @ApiOperation({ summary: 'Get HR Event file URLs (catalog and schedules)' })
+  @ApiResponse({ status: 200, description: 'HR Event file URLs' })
+  async getHrEventFiles() {
+    // Define the file keys (these should match what was uploaded)
+    const fileKeys = {
+      catalog: 'hr-event/catalog.pdf',
+      schedule1: 'hr-event/schedule-1.jpg',
+      schedule2: 'hr-event/schedule-2.jpg',
+    };
+
+    return {
+      catalog: this.minioService.getPublicUrl(fileKeys.catalog),
+      schedule1: this.minioService.getPublicUrl(fileKeys.schedule1),
+      schedule2: this.minioService.getPublicUrl(fileKeys.schedule2),
+    };
   }
 
   @Get(':id/speakers')

@@ -154,6 +154,115 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  /**
+   * Upload a file from the filesystem to MinIO
+   */
+  async uploadFileFromPath(
+    filePath: string,
+    folder: string = 'general',
+    customFileName?: string,
+    contentType?: string,
+  ): Promise<{ url: string; key: string; originalName: string; size: number; mimeType: string }> {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const stats = fs.statSync(filePath);
+      const fileBuffer = fs.readFileSync(filePath);
+      const originalName = path.basename(filePath);
+      const fileExtension = originalName.split('.').pop();
+      const fileName = customFileName || originalName;
+      const objectKey = `${folder}/${fileName}`;
+
+      // Determine content type
+      let mimeType = contentType;
+      if (!mimeType) {
+        if (fileExtension === 'pdf') {
+          mimeType = 'application/pdf';
+        } else if (['jpg', 'jpeg'].includes(fileExtension.toLowerCase())) {
+          mimeType = 'image/jpeg';
+        } else if (fileExtension === 'png') {
+          mimeType = 'image/png';
+        } else {
+          mimeType = 'application/octet-stream';
+        }
+      }
+
+      // Upload file to MinIO
+      // Encode original name to handle non-ASCII characters in headers
+      const metadata: any = {
+        'Content-Type': mimeType,
+      };
+      
+      // Only add original name header if it contains ASCII characters
+      // For non-ASCII filenames, we'll skip this header to avoid encoding issues
+      try {
+        // Try to encode the filename properly
+        const encodedName = encodeURIComponent(originalName);
+        if (encodedName.length < 256) { // HTTP header value length limit
+          metadata['X-Original-Name'] = encodedName;
+        }
+      } catch {
+        // Skip header if encoding fails
+      }
+
+      await this.minioClient.putObject(
+        this.bucketName,
+        objectKey,
+        fileBuffer,
+        stats.size,
+        metadata,
+      );
+
+      // Generate public URL
+      const publicUrl = this.configService.get('MINIO_PUBLIC_URL');
+      let url: string;
+      
+      if (publicUrl) {
+        const baseUrl = publicUrl.replace(/\/$/, '');
+        url = `${baseUrl}/${this.bucketName}/${objectKey}`;
+      } else {
+        const protocol = this.configService.get('MINIO_USE_SSL', 'false') === 'true' ? 'https' : 'http';
+        const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
+        url = `${protocol}://${endpoint}/${this.bucketName}/${objectKey}`;
+      }
+
+      this.logger.log(`File uploaded successfully from path: ${objectKey}`);
+
+      return {
+        url,
+        key: objectKey,
+        originalName,
+        size: stats.size,
+        mimeType,
+      };
+    } catch (error) {
+      this.logger.error(`Error uploading file from path: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get public URL for an object key
+   */
+  getPublicUrl(objectKey: string): string {
+    const publicUrl = this.configService.get('MINIO_PUBLIC_URL');
+    
+    if (publicUrl) {
+      const baseUrl = publicUrl.replace(/\/$/, '');
+      return `${baseUrl}/${this.bucketName}/${objectKey}`;
+    } else {
+      const protocol = this.configService.get('MINIO_USE_SSL', 'false') === 'true' ? 'https' : 'http';
+      const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
+      return `${protocol}://${endpoint}/${this.bucketName}/${objectKey}`;
+    }
+  }
+
   // Helper method to extract object key from URL
   extractObjectKeyFromUrl(url: string): string | null {
     try {
