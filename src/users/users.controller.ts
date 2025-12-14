@@ -227,8 +227,8 @@ export class UsersController {
 
     const lines: string[] = [];
     
-    // Header row
-    lines.push('Category,ID,Phone,Firstname,Lastname,Email,CreatedAt,PaymentCount,AttendeeCount,HasPayment');
+    // Header row - updated with new columns
+    lines.push('Category,ID,Phone,Firstname,Lastname,Email,CreatedAt,PaymentCount,AttendeeCount,HasPayment,TotalAmountPaid,UsedDiscountCode,DiscountCodesUsed,TotalDiscountAmount');
     
     // Helper to add user rows
     const addUserRows = (users: any[], category: string) => {
@@ -244,6 +244,11 @@ export class UsersController {
           escapeCsvField(user.paymentCount || ''),
           escapeCsvField(user.attendeeCount || ''),
           escapeCsvField(user.hasPayment !== undefined ? user.hasPayment : ''),
+          // New columns for paid users
+          escapeCsvField(user.totalAmountPaid !== undefined ? user.totalAmountPaid.toLocaleString() : ''),
+          escapeCsvField(user.usedDiscountCode !== undefined ? (user.usedDiscountCode ? 'Yes' : 'No') : ''),
+          escapeCsvField(user.discountCodesUsed || ''),
+          escapeCsvField(user.totalDiscountAmount !== undefined ? user.totalDiscountAmount.toLocaleString() : ''),
         ];
         lines.push(row.join(','));
       }

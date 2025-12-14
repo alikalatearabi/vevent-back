@@ -99,8 +99,8 @@ export class MinioService implements OnModuleInit {
         url = `${baseUrl}/${this.bucketName}/${objectKey}`;
       } else {
         // Fall back to constructing URL from endpoint
-        const protocol = this.configService.get('MINIO_USE_SSL', 'false') === 'true' ? 'https' : 'http';
-        const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
+      const protocol = this.configService.get('MINIO_USE_SSL', 'false') === 'true' ? 'https' : 'http';
+      const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
         url = `${protocol}://${endpoint}/${this.bucketName}/${objectKey}`;
       }
 

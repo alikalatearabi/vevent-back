@@ -132,14 +132,14 @@ export class UsersService {
       // Regular user - check actual payment status
       // Check for completed payments OR payments with amount 0 (100% discount)
       const payments = await this.prisma.payment.findMany({
-        where: {
-          userId,
+      where: {
+        userId,
         },
         select: {
           status: true,
           amount: true,
-        },
-      });
+      },
+    });
       
       // Check if any payment is COMPLETED or has amount 0 (100% discount)
       isPaymentComplete = payments.some(
@@ -584,10 +584,42 @@ export class UsersService {
                 eventId,
                 status: 'COMPLETED',
               },
+              select: {
+                id: true,
+                amount: true,
+                discountCodeUsage: {
+                  select: {
+                    discountCode: {
+                      select: {
+                        code: true,
+                      },
+                    },
+                    discountAmount: true,
+                    finalAmount: true,
+                    originalAmount: true,
+                  },
+                },
+              },
             }
           : {
               where: {
                 status: 'COMPLETED',
+              },
+              select: {
+                id: true,
+                amount: true,
+                discountCodeUsage: {
+                  select: {
+                    discountCode: {
+                      select: {
+                        code: true,
+                      },
+                    },
+                    discountAmount: true,
+                    finalAmount: true,
+                    originalAmount: true,
+                  },
+                },
               },
             },
         attendees: eventId
@@ -622,6 +654,21 @@ export class UsersService {
         });
       } else if (hasCompletedPayment) {
         // Registered and paid
+        // Calculate total amount paid and check for discount codes
+        let totalAmountPaid = 0;
+        let usedDiscountCode = false;
+        let discountCodesUsed: string[] = [];
+        let totalDiscountAmount = 0;
+
+        for (const payment of user.payments) {
+          totalAmountPaid += parseFloat(payment.amount.toString());
+          if (payment.discountCodeUsage) {
+            usedDiscountCode = true;
+            discountCodesUsed.push(payment.discountCodeUsage.discountCode.code);
+            totalDiscountAmount += parseFloat(payment.discountCodeUsage.discountAmount.toString());
+          }
+        }
+
         registeredAndPaid.push({
           id: user.id,
           phone: user.phone,
@@ -631,6 +678,10 @@ export class UsersService {
           createdAt: user.createdAt,
           paymentCount: user.payments.length,
           attendeeCount: user.attendees.length,
+          totalAmountPaid: totalAmountPaid,
+          usedDiscountCode: usedDiscountCode,
+          discountCodesUsed: discountCodesUsed.join('; '), // Join multiple codes with semicolon
+          totalDiscountAmount: totalDiscountAmount,
         });
       } else {
         // Registered but not paid

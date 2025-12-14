@@ -15,7 +15,6 @@
     "seed:categories": "ts-node -r tsconfig-paths/register prisma/update-persian-categories.ts",
     "seed:attendees": "ts-node -r tsconfig-paths/register prisma/seed-attendees.ts",
     "seed:hr-event": "ts-node -r tsconfig-paths/register prisma/seed-hr-event-simple.ts",
-    "seed:hr-sessions": "ts-node -r tsconfig-paths/register prisma/seed-hr-event-sessions.ts",
     "delete:payments": "ts-node -r tsconfig-paths/register prisma/delete-all-payments.ts",
     "clear:db": "ts-node -r tsconfig-paths/register prisma/clear-database.ts",
     "set:payment-free": "ts-node -r tsconfig-paths/register prisma/set-payment-free.ts",
@@ -25,10 +24,7 @@
     "update:event-price": "ts-node -r tsconfig-paths/register prisma/update-event-price.ts",
     "register:speakers": "ts-node -r tsconfig-paths/register prisma/register-speakers.ts",
     "register:for-event": "ts-node -r tsconfig-paths/register prisma/register-user-for-event.ts",
-    "generate:discount-codes": "ts-node -r tsconfig-paths/register prisma/generate-bulk-discount-codes.ts",
-    "fix:asset-urls": "ts-node -r tsconfig-paths/register prisma/fix-asset-urls.ts",
-    "update:asset-urls-subdomain": "ts-node -r tsconfig-paths/register prisma/update-asset-urls-to-subdomain.ts",
-    "fix:zero-amount-payments": "ts-node -r tsconfig-paths/register prisma/fix-zero-amount-payments.ts",
+    "list:payment-bypass": "ts-node -r tsconfig-paths/register prisma/list-payment-bypass-numbers.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
