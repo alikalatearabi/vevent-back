@@ -191,20 +191,55 @@ export class PaymentsService {
           const currentEventCurrency = event.currency || this.currency;
           const storedAmount = existingPayment.amount.toNumber();
           
-          // Check if event price has changed
-          if (currentEventPrice !== storedAmount) {
-            this.logger.warn(`[Payment Initiation] Step 5: ⚠️  Event price changed from ${storedAmount} to ${currentEventPrice}. Updating payment amount.`);
+          // Calculate final amount (with discount code if provided)
+          let originalAmount = currentEventPrice;
+          let finalAmount = originalAmount;
+          let discountAmount = 0;
+          
+          // Apply discount code if provided
+          if (discountCode) {
+            this.logger.debug(`[Payment Initiation] Step 5: Validating discount code for existing payment: ${discountCode}`);
+            try {
+              const validation = await this.discountCodesService.validate({
+                code: discountCode,
+                eventId,
+                amount: originalAmount,
+                userId,
+              });
+
+              if (validation.valid && validation.data) {
+                discountAmount = validation.data.discountAmount;
+                finalAmount = validation.data.finalAmount;
+                this.logger.log(`[Payment Initiation] Step 5: Discount applied to existing payment - Original: ${originalAmount}, Discount: ${discountAmount}, Final: ${finalAmount}`);
+              }
+            } catch (error) {
+              this.logger.error(`[Payment Initiation] Step 5: Discount code validation failed: ${error.message}`);
+              // Continue without discount if validation fails
+            }
+          }
+          
+          // Check if payment amount needs to be updated (price changed or discount applied)
+          if (currentEventPrice !== storedAmount || (discountCode && finalAmount !== storedAmount)) {
+            const reason = discountCode ? 'discount code applied' : 'event price changed';
+            this.logger.warn(`[Payment Initiation] Step 5: ⚠️  Payment amount needs update (${reason}). Updating from ${storedAmount} to ${finalAmount}.`);
             
             // Update the payment record with new amount
             await this.prisma.payment.update({
               where: { id: existingPayment.id },
               data: {
-                amount: currentEventPrice,
+                amount: finalAmount,
                 currency: currentEventCurrency,
+                metadata: discountCode ? {
+                  ...(existingPayment.metadata as any || {}),
+                  originalAmount,
+                  discountCode,
+                  discountAmount,
+                  finalAmount,
+                } : existingPayment.metadata,
               },
             });
             
-            this.logger.log(`[Payment Initiation] Step 5: Updated payment amount to ${currentEventPrice} ${currentEventCurrency}`);
+            this.logger.log(`[Payment Initiation] Step 5: Updated payment amount to ${finalAmount} ${currentEventCurrency}`);
           }
         
           // For BitPay, call gateway service to get fresh transaction ID
@@ -220,14 +255,19 @@ export class PaymentsService {
               this.logger.warn(`[Payment Initiation] Step 5: PAYMENT_CALLBACK_URL not configured`);
             } else {
               try {
-                // Use current event price, not stored payment amount
+                // Use final amount (with discount if applied), not original price
                 gatewayResponse = await this.paymentGatewayService.initiatePayment({
-                  amount: currentEventPrice,
-                  description: `پرداخت هزینه رویداد`,
+                  amount: finalAmount,
+                  description: `پرداخت هزینه رویداد: ${event.title}${discountCode ? ` (با کد تخفیف: ${discountCode})` : ''}`,
                   callbackUrl,
                   metadata: {
                     paymentId: existingPayment.id,
                     eventId: existingPayment.eventId,
+                    ...(discountCode && {
+                      discountCode,
+                      originalAmount,
+                      discountAmount,
+                    }),
                   },
                 });
                 
@@ -256,17 +296,45 @@ export class PaymentsService {
             }
           }
           
+          // Apply discount code usage if discount code was provided and not already applied
+          if (discountCode) {
+            this.logger.debug(`[Payment Initiation] Step 5: Applying discount code usage for existing payment`);
+            try {
+              await this.discountCodesService.applyDiscountCode(
+                discountCode,
+                userId,
+                existingPayment.id,
+                eventId,
+                originalAmount,
+              );
+              this.logger.log(`[Payment Initiation] Step 5: Discount code usage recorded for existing payment`);
+            } catch (error) {
+              // If usage already exists, that's okay - just log it
+              if (error.message?.includes('already') || error.message?.includes('قبلاً')) {
+                this.logger.debug(`[Payment Initiation] Step 5: Discount code usage already exists for this payment`);
+              } else {
+                this.logger.error(`[Payment Initiation] Step 5: Failed to apply discount code usage: ${error.message}`);
+                // Don't fail the payment if discount code usage fails
+              }
+            }
+          }
+          
           // Return existing pending payment (with updated amount if changed)
           const response: any = {
             success: true,
             paymentId: existingPayment.id,
             paymentUrl: gatewayResponse?.paymentUrl || existingPayment.paymentUrl,
             status: existingPayment.status.toLowerCase(),
-            amount: currentEventPrice, // Use current event price, not stored amount
+            amount: finalAmount, // Use final amount (with discount if applied)
             currency: currentEventCurrency, // Use current event currency
             gateway: existingPayment.gateway,
             authority: existingPayment.authority,
             message: 'در حال انتقال به درگاه پرداخت...',
+            ...(discountCode && {
+              originalAmount,
+              discountAmount,
+              discountCode,
+            }),
           };
           
           // Add gateway response data if available (transactionId, formData, etc.)
