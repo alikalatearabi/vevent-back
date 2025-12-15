@@ -50,10 +50,14 @@ export class EventsController {
       schedule2: 'hr-event/schedule-2.jpg',
     };
 
+    // Add a cache-busting query param so CDN/proxy doesn't serve stale files
+    const version = Date.now();
+    const withVersion = (url: string) => `${url}?v=${version}`;
+
     return {
-      catalog: this.minioService.getPublicUrl(fileKeys.catalog),
-      schedule1: this.minioService.getPublicUrl(fileKeys.schedule1),
-      schedule2: this.minioService.getPublicUrl(fileKeys.schedule2),
+      catalog: withVersion(this.minioService.getPublicUrl(fileKeys.catalog)),
+      schedule1: withVersion(this.minioService.getPublicUrl(fileKeys.schedule1)),
+      schedule2: withVersion(this.minioService.getPublicUrl(fileKeys.schedule2)),
     };
   }
 
