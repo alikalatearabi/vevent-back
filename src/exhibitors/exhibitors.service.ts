@@ -65,17 +65,17 @@ export class ExhibitorsService {
       const logoAsset = e.assets?.find((a: any) => a.role === 'logo');
       
       return {
-        id: e.id,
-        name: e.name,
-        title: e.title,
-        description: e.description,
-        location: e.location,
-        sponsor: e.sponsor,
-        website: e.website,
-        favoriteCount: e.favoriteCount,
+      id: e.id,
+      name: e.name,
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      sponsor: e.sponsor,
+      website: e.website,
+      favoriteCount: e.favoriteCount,
         coverUrl: coverAsset?.asset?.url || null,
         logoUrl: logoAsset?.asset?.url || null,
-        tags: e.tags?.map((t: any) => t.tag) || [],
+      tags: e.tags?.map((t: any) => t.tag) || [],
       };
     });
 
