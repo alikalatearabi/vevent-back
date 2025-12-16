@@ -6,6 +6,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { AssetService } from '../common/services/asset.service';
+import { MinioService } from '../common/services/minio.service';
 
 @ApiTags('Products')
 @Controller('api/v1/products')
@@ -13,6 +14,7 @@ export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly assetService: AssetService,
+    private readonly minioService: MinioService,
   ) {}
 
   @Get()
@@ -95,7 +97,7 @@ export class ProductsController {
 
       uploadedAssets.push({
         id: asset.id,
-        url: asset.url,
+        url: this.minioService.normalizeAssetUrl(asset.url),
         role: link.role,
         originalName: file.originalname,
       });
@@ -155,7 +157,7 @@ export class ProductsController {
       message: 'Cover image uploaded successfully',
       asset: {
         id: asset.id,
-        url: asset.url,
+        url: this.minioService.normalizeAssetUrl(asset.url),
         role: link.role,
         originalName: file.originalname,
       },
@@ -172,7 +174,7 @@ export class ProductsController {
       productId,
       images: assets.map(a => ({
         id: a.asset.id,
-        url: a.asset.url,
+        url: this.minioService.normalizeAssetUrl(a.asset.url),
         role: a.role,
         type: a.asset.type,
         meta: a.asset.meta,

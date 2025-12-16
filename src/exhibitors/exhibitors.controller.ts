@@ -2,11 +2,15 @@ import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common
 import { ExhibitorsService } from './exhibitors.service';
 import { FindExhibitorsDto } from './dto/find-exhibitors.dto';
 import { ApiTags, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { MinioService } from '../common/services/minio.service';
 
 @ApiTags('Exhibitors')
 @Controller('api/v1/exhibitors')
 export class ExhibitorsController {
-  constructor(private readonly exhibitorsService: ExhibitorsService) {}
+  constructor(
+    private readonly exhibitorsService: ExhibitorsService,
+    private readonly minioService: MinioService,
+  ) {}
 
   @Get()
   @ApiQuery({ name: 'page', required: false })
@@ -24,9 +28,12 @@ export class ExhibitorsController {
   async findById(@Param('id') id: string) {
     const e = await this.exhibitorsService.findById(id);
     if (!e) throw new NotFoundException();
-    const cover = e.assets?.find((a: any) => a.role === 'cover')?.asset?.url || null;
-    const logo = e.assets?.find((a: any) => a.role === 'logo')?.asset?.url || null;
-    const images = e.assets?.filter((a: any) => a.role !== 'cover' && a.role !== 'logo').map((a: any) => a.asset?.url) || [];
+    
+    const normalizeUrl = (url: string | null) => url ? this.minioService.normalizeAssetUrl(url) : null;
+    
+    const cover = normalizeUrl(e.assets?.find((a: any) => a.role === 'cover')?.asset?.url || null);
+    const logo = normalizeUrl(e.assets?.find((a: any) => a.role === 'logo')?.asset?.url || null);
+    const images = e.assets?.filter((a: any) => a.role !== 'cover' && a.role !== 'logo').map((a: any) => this.minioService.normalizeAssetUrl(a.asset?.url)).filter(Boolean);
 
     return {
       id: e.id,
@@ -45,7 +52,7 @@ export class ExhibitorsController {
         name: p.name,
         description: p.description,
         price: p.price,
-        assets: p.assets?.map((ap: any) => ap.asset?.url) || [],
+        assets: p.assets?.map((ap: any) => this.minioService.normalizeAssetUrl(ap.asset?.url)).filter(Boolean),
       })) || [],
       events: e.events?.map((ev: any) => ({ id: ev.id, title: ev.title, start: ev.start, timezone: ev.timezone })) || [],
     };

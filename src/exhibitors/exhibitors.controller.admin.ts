@@ -6,6 +6,7 @@ import { UpdateExhibitorDto } from './dto/update-exhibitor.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import { AssetService } from '../common/services/asset.service';
+import { MinioService } from '../common/services/minio.service';
 import type { Multer } from 'multer';
 
 @ApiTags('Exhibitors')
@@ -15,6 +16,7 @@ export class ExhibitorsAdminController {
   constructor(
     private readonly exhibitorsService: ExhibitorsService,
     private readonly assetService: AssetService,
+    private readonly minioService: MinioService,
   ) {}
 
   @UseGuards(AuthGuard('jwt'))
@@ -81,7 +83,7 @@ export class ExhibitorsAdminController {
 
       uploadedAssets.push({
         id: asset.id,
-        url: asset.url,
+        url: this.minioService.normalizeAssetUrl(asset.url),
         role: link.role,
         originalName: file.originalname,
       });

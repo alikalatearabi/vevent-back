@@ -276,12 +276,54 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  /**
+   * Normalize asset URL - converts old HTTP IP-based URLs to HTTPS domain-based URLs
+   */
+  normalizeAssetUrl(url: string): string {
+    if (!url) return url;
+    
+    const publicUrl = this.configService.get('MINIO_PUBLIC_URL');
+    if (!publicUrl) return url; // If no public URL configured, return as-is
+    
+    try {
+      const urlObj = new URL(url);
+      const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
+      const endpointHost = endpoint.split(':')[0];
+      
+      // Check if this is an old IP-based URL that needs conversion
+      if (urlObj.hostname === endpointHost || urlObj.hostname === '185.149.192.60') {
+        // Extract the object key from the old URL
+        const objectKey = this.extractObjectKeyFromUrl(url);
+        if (objectKey) {
+          // Return the normalized URL using the public domain
+          const baseUrl = publicUrl.replace(/\/$/, '');
+          return `${baseUrl}/${this.bucketName}/${objectKey}`;
+        }
+      }
+      
+      // If already using the public domain, return as-is
+      const publicUrlObj = new URL(publicUrl);
+      if (urlObj.hostname === publicUrlObj.hostname) {
+        return url;
+      }
+      
+      return url;
+    } catch {
+      return url;
+    }
+  }
+
   // Helper method to extract object key from URL
   extractObjectKeyFromUrl(url: string): string | null {
     try {
       const urlObj = new URL(url);
       const pathParts = urlObj.pathname.split('/');
-      // Remove bucket name and get the rest as object key
+      // Path format: /bucket-name/object-key
+      const bucketIndex = pathParts.findIndex(part => part === this.bucketName);
+      if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+        return pathParts.slice(bucketIndex + 1).join('/');
+      }
+      // Fallback: assume bucket is first part after root
       return pathParts.slice(2).join('/');
     } catch {
       return null;

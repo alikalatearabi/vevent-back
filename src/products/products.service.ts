@@ -2,10 +2,14 @@ import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FindProductsDto } from './dto/find-products.dto';
+import { MinioService } from '../common/services/minio.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(@Inject('PRISMA') private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject('PRISMA') private readonly prisma: PrismaClient,
+    private readonly minioService: MinioService,
+  ) {}
 
   async findMany(opts: FindProductsDto) {
     const { page = 1, limit = 20, q, exhibitorId, categoryId, inStock, featured, tags, minPrice, maxPrice, sortBy = 'createdAt', sortOrder = 'desc' } = opts;
@@ -123,7 +127,7 @@ export class ProductsService {
       featured: p.featured,
       assets: p.assets?.map((a: any) => ({
         id: a.asset.id,
-        url: a.asset.url,
+        url: this.minioService.normalizeAssetUrl(a.asset.url),
         role: a.role,
         type: a.asset.type
       })) || [],
@@ -143,7 +147,7 @@ export class ProductsService {
       exhibitor: {
         id: p.exhibitor.id,
         name: p.exhibitor.name,
-        coverUrl: p.exhibitor.assets?.[0]?.asset?.url || null
+        coverUrl: p.exhibitor.assets?.[0]?.asset?.url ? this.minioService.normalizeAssetUrl(p.exhibitor.assets[0].asset.url) : null
       },
       createdAt: p.createdAt,
       updatedAt: p.updatedAt
@@ -196,7 +200,7 @@ export class ProductsService {
       imageUrl: this.getPrimaryImageUrl((product as any).assets) || product.imageUrl,
       assets: (product as any).assets?.map((a: any) => ({
         id: a.asset.id,
-        url: a.asset.url,
+        url: this.minioService.normalizeAssetUrl(a.asset.url),
         role: a.role,
         type: a.asset.type,
         meta: a.asset.meta
@@ -319,10 +323,10 @@ export class ProductsService {
     
     // Look for cover image first
     const cover = assets.find(a => a.role === 'cover');
-    if (cover) return cover.asset.url;
+    if (cover) return this.minioService.normalizeAssetUrl(cover.asset.url);
     
     // Fall back to first image
     const firstImage = assets.find(a => a.asset.type === 'image');
-    return firstImage ? firstImage.asset.url : null;
+    return firstImage ? this.minioService.normalizeAssetUrl(firstImage.asset.url) : null;
   }
 }

@@ -18,10 +18,13 @@ export class AssetService {
     // Upload to MinIO
     const uploadResult = await this.minioService.uploadFile(file, folder);
 
+    // Normalize the URL to ensure it uses the public domain
+    const normalizedUrl = this.minioService.normalizeAssetUrl(uploadResult.url);
+
     // Create asset record in database
     const asset = await this.prisma.asset.create({
       data: {
-        url: uploadResult.url,
+        url: normalizedUrl, // Use normalized URL
         type: this.getAssetType(file.mimetype),
         meta: {
           originalName: uploadResult.originalName,

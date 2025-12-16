@@ -1,9 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { MinioService } from '../common/services/minio.service';
 
 @Injectable()
 export class ExhibitorsService {
-  constructor(@Inject('PRISMA') private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject('PRISMA') private readonly prisma: PrismaClient,
+    private readonly minioService: MinioService,
+  ) {}
 
   async findMany(opts: any) {
     const page = opts.page || 1;
@@ -73,8 +77,8 @@ export class ExhibitorsService {
       sponsor: e.sponsor,
       website: e.website,
       favoriteCount: e.favoriteCount,
-        coverUrl: coverAsset?.asset?.url || null,
-        logoUrl: logoAsset?.asset?.url || null,
+        coverUrl: coverAsset?.asset?.url ? this.minioService.normalizeAssetUrl(coverAsset.asset.url) : null,
+        logoUrl: logoAsset?.asset?.url ? this.minioService.normalizeAssetUrl(logoAsset.asset.url) : null,
       tags: e.tags?.map((t: any) => t.tag) || [],
       };
     });
