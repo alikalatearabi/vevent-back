@@ -129,6 +129,19 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  async fileExists(objectKey: string): Promise<boolean> {
+    try {
+      await this.minioClient.statObject(this.bucketName, objectKey);
+      return true;
+    } catch (error: any) {
+      if (error.code === 'NotFound' || error.code === 'NoSuchKey') {
+        return false;
+      }
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
   async getFileUrl(objectKey: string, expiry: number = 24 * 60 * 60): Promise<string> {
     try {
       return await this.minioClient.presignedGetObject(this.bucketName, objectKey, expiry);

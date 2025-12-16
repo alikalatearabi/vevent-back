@@ -8,6 +8,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MinioService } from '../common/services/minio.service';
+import * as path from 'path';
 
 @ApiTags('Events')
 @Controller('api/v1/events')
@@ -58,6 +59,55 @@ export class EventsController {
       catalog: withVersion(this.minioService.getPublicUrl(fileKeys.catalog)),
       schedule1: withVersion(this.minioService.getPublicUrl(fileKeys.schedule1)),
       schedule2: withVersion(this.minioService.getPublicUrl(fileKeys.schedule2)),
+    };
+  }
+
+  @Get('map')
+  @ApiOperation({ summary: 'Get event map URL' })
+  @ApiResponse({ status: 200, description: 'Event map URL' })
+  async getMapUrl() {
+    const mapKey = 'events/Map.jpg';
+    
+    // Check if map exists in MinIO, if not upload it
+    const exists = await this.minioService.fileExists(mapKey);
+    
+    if (!exists) {
+      // Upload the map file from assets folder
+      const mapPath = path.join(process.cwd(), 'src', 'assets', 'Map.jpg');
+      await this.minioService.uploadFileFromPath(mapPath, 'events', 'Map.jpg', 'image/jpeg');
+    }
+
+    // Add a cache-busting query param so CDN/proxy doesn't serve stale files
+    const version = Date.now();
+    const url = this.minioService.getPublicUrl(mapKey);
+    
+    return {
+      url: `${url}?v=${version}`,
+    };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @Post('map/upload')
+  @ApiOperation({ summary: 'Upload event map to MinIO' })
+  @ApiResponse({ status: 200, description: 'Map uploaded successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async uploadMap() {
+    const mapKey = 'events/Map.jpg';
+    const mapPath = path.join(process.cwd(), 'src', 'assets', 'Map.jpg');
+    
+    // Upload the map file from assets folder
+    const result = await this.minioService.uploadFileFromPath(mapPath, 'events', 'Map.jpg', 'image/jpeg');
+    
+    // Add a cache-busting query param so CDN/proxy doesn't serve stale files
+    const version = Date.now();
+    const url = `${result.url}?v=${version}`;
+    
+    return {
+      message: 'Map uploaded successfully',
+      url,
+      key: result.key,
+      size: result.size,
     };
   }
 
@@ -134,15 +184,82 @@ export class EventsController {
   @Get(':id/attendees')
   @ApiOperation({ summary: 'List attendees for event (admin/owner)' })
   @ApiResponse({ status: 200, description: 'List of attendees' })
-  @ApiOperation({ summary: 'List attendees for event (admin/owner)' })
   async listAttendees(@Param('id') id: string, @Query() q: any) {
     const page = parseInt(q.page || '1');
     const limit = Math.min(parseInt(q.limit || '50'), 200);
     const skip = (page - 1) * limit;
-    const [data, total] = await (this.eventsService as any).prisma.$transaction([
-      (this.eventsService as any).prisma.attendee.findMany({ where: { eventId: id }, skip, take: limit, orderBy: { createdAt: 'desc' } }),
-      (this.eventsService as any).prisma.attendee.count({ where: { eventId: id } }),
+    const [attendees, total] = await (this.eventsService as any).prisma.$transaction([
+      (this.eventsService as any).prisma.attendee.findMany({ 
+        where: { 
+          eventId: id,
+          OR: [
+            // Include attendees with no user (anonymous)
+            { userId: null },
+            // Include attendees where user has completed profile (not default values)
+            {
+              user: {
+                AND: [
+                  { firstname: { not: 'کاربر' } },
+                  { lastname: { not: 'جدید' } }
+                ]
+              }
+            }
+          ]
+        }, 
+        skip, 
+        take: limit, 
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+              email: true,
+              phone: true,
+              company: true,
+              jobTitle: true,
+              avatarAssetId: true,
+            }
+          }
+        }
+      }),
+      (this.eventsService as any).prisma.attendee.count({ 
+        where: { 
+          eventId: id,
+          OR: [
+            { userId: null },
+            {
+              user: {
+                AND: [
+                  { firstname: { not: 'کاربر' } },
+                  { lastname: { not: 'جدید' } }
+                ]
+              }
+            }
+          ]
+        } 
+      }),
     ]);
+    
+    // Map attendees to use user's current name if available, otherwise use stored attendee name
+    const data = attendees.map((attendee: any) => ({
+      ...attendee,
+      firstName: attendee.user?.firstname && attendee.user.firstname !== 'کاربر' 
+        ? attendee.user.firstname 
+        : attendee.firstName,
+      lastName: attendee.user?.lastname && attendee.user.lastname !== 'جدید' 
+        ? attendee.user.lastname 
+        : attendee.lastName,
+      email: attendee.user?.email && !attendee.user.email.includes('@vevent.temp')
+        ? attendee.user.email
+        : attendee.email,
+      phone: attendee.user?.phone || attendee.phone,
+      company: attendee.user?.company || attendee.company,
+      jobTitle: attendee.user?.jobTitle || attendee.jobTitle,
+      avatar: attendee.user?.avatarAssetId || attendee.avatar,
+    }));
+    
     return { data, meta: { page, limit, total } };
   }
 }
