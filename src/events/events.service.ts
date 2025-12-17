@@ -42,7 +42,7 @@ export class EventsService {
       where.end = { lte: to };
     }
 
-    const [data, total] = await this.prisma.$transaction([
+    const [events, total] = await this.prisma.$transaction([
       this.prisma.event.findMany({
         where,
         skip,
@@ -58,11 +58,58 @@ export class EventsService {
           location: true,
           exhibitorId: true,
           timed: true,
+          speakers: {
+            where: {
+              user: {
+                NOT: {
+                  AND: [
+                    { firstname: 'کاربر' },
+                    { lastname: 'جدید' },
+                  ],
+                },
+              },
+            },
+            select: {
+              role: true,
+              order: true,
+              user: {
+                select: {
+                  id: true,
+                  firstname: true,
+                  lastname: true,
+                  company: true,
+                  jobTitle: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { start: 'asc' },
       }),
       this.prisma.event.count({ where }),
     ]);
+
+    const data = events.map((e: any) => ({
+      id: e.id,
+      name: e.name,
+      title: e.title,
+      color: e.color,
+      start: e.start,
+      end: e.end,
+      timezone: e.timezone,
+      location: e.location,
+      exhibitorId: e.exhibitorId,
+      timed: e.timed,
+      speakers: (e.speakers || []).map((es: any) => ({
+        id: es.user.id,
+        firstName: es.user.firstname,
+        lastName: es.user.lastname,
+        company: es.user.company,
+        jobTitle: es.user.jobTitle,
+        role: es.role || 'SPEAKER',
+        order: es.order || 0,
+      })),
+    }));
 
     return { data, meta: { page, limit, total } };
   }
