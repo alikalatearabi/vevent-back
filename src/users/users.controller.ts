@@ -228,7 +228,9 @@ export class UsersController {
     const lines: string[] = [];
     
     // Header row - updated with new columns
-    lines.push('Category,ID,Phone,Firstname,Lastname,Email,CreatedAt,PaymentCount,AttendeeCount,HasPayment,TotalAmountPaid,UsedDiscountCode,DiscountCodesUsed,TotalDiscountAmount');
+    lines.push(
+      'Category,ID,Phone,Firstname,Lastname,Email,Company,JobTitle,CreatedAt,PaymentCount,AttendeeCount,HasPayment,TotalAmountPaid,UsedDiscountCode,DiscountCodesUsed,TotalDiscountAmount',
+    );
     
     // Helper to add user rows
     const addUserRows = (users: any[], category: string) => {
@@ -240,6 +242,8 @@ export class UsersController {
           escapeCsvField(user.firstname),
           escapeCsvField(user.lastname),
           escapeCsvField(user.email),
+          escapeCsvField(user.company || ''),
+          escapeCsvField(user.jobTitle || ''),
           escapeCsvField(user.createdAt ? new Date(user.createdAt).toISOString() : ''),
           escapeCsvField(user.paymentCount || ''),
           escapeCsvField(user.attendeeCount || ''),

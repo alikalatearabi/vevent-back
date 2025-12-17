@@ -577,6 +577,8 @@ export class UsersService {
         firstname: true,
         lastname: true,
         email: true,
+        company: true,
+        jobTitle: true,
         createdAt: true,
         payments: eventId
           ? {
@@ -649,6 +651,8 @@ export class UsersService {
           firstname: user.firstname,
           lastname: user.lastname,
           email: user.email,
+          company: user.company,
+          jobTitle: user.jobTitle,
           createdAt: user.createdAt,
           hasPayment: hasCompletedPayment,
         });
@@ -675,6 +679,8 @@ export class UsersService {
           firstname: user.firstname,
           lastname: user.lastname,
           email: user.email,
+          company: user.company,
+          jobTitle: user.jobTitle,
           createdAt: user.createdAt,
           paymentCount: user.payments.length,
           attendeeCount: user.attendees.length,
@@ -691,6 +697,8 @@ export class UsersService {
           firstname: user.firstname,
           lastname: user.lastname,
           email: user.email,
+          company: user.company,
+          jobTitle: user.jobTitle,
           createdAt: user.createdAt,
           attendeeCount: user.attendees.length,
         });
