@@ -145,9 +145,16 @@ export class EventsService {
       orderBy: { order: 'asc' }
     });
 
+    // Filter out placeholder users like "کاربر جدید"
+    const filteredSpeakers = eventSpeakers.filter(es => !(
+      es.user &&
+      es.user.firstname === 'کاربر' &&
+      es.user.lastname === 'جدید'
+    ));
+
     // Remove duplicates (same speaker in multiple sessions) and keep unique by user ID
     const uniqueSpeakers = new Map();
-    eventSpeakers.forEach(es => {
+    filteredSpeakers.forEach(es => {
       if (!uniqueSpeakers.has(es.user.id)) {
         uniqueSpeakers.set(es.user.id, es);
       }
