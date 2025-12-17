@@ -43,56 +43,8 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto, res: any) {
-    // Validate terms of conditions acceptance
-    if (!dto.toc) {
-      throw new BadRequestException('You must accept the terms and conditions to register');
-    }
-
-    // Check if email already exists
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (existing) {
-      throw new ConflictException('Email already in use');
-    }
-
-    // Hash password
-    const passwordHash = await argon2.hash(dto.password);
-
-    // Create user with all fields
-    const user = await this.prisma.user.create({
-      data: {
-        firstname: dto.firstName,
-        lastname: dto.lastName,
-        email: dto.email,
-        passwordHash,
-        phone: dto.phone,
-        company: dto.company || null,
-        jobTitle: dto.jobTitle || null,
-        role: 'USER',
-        isActive: true,
-      },
-      select: {
-        id: true,
-        firstname: true,
-        lastname: true,
-        email: true,
-        role: true,
-        avatarAssetId: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        deletedAt: true,
-      },
-    });
-
-    const accessToken = await this.createAccessToken(user.id);
-    const { raw, db } = await this.refreshTokenService.create(user.id, this.getRefreshExpiresSeconds());
-
-    res.cookie('refreshToken', raw, this.cookieOptions(this.getRefreshExpiresSeconds()));
-
-    return { 
-      user,
-      accessToken 
-    };
+    // Temporarily disable new user registrations
+    throw new BadRequestException('ثبت‌نام کاربر جدید در حال حاضر امکان‌پذیر نیست');
   }
 
   async login(dto: any, res: any) {
