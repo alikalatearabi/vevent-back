@@ -51,51 +51,93 @@ export class ConnectionRequestService {
     }
 
     // Get receiver attendee record
-    const receiverAttendee = await this.prisma.attendee.findUnique({
-      where: { id: dto.receiverId }
+    // Frontend may pass either:
+    // - receiverId = Attendee.id (legacy / attendee lists)
+    // - receiverId = User.id (e.g. /events/:id/speakers returns user ids)
+    let receiverAttendee = await this.prisma.attendee.findUnique({
+      where: { id: dto.receiverId },
     });
+
+    // Fallback: treat receiverId as User.id and resolve attendee via eventId
+    if (!receiverAttendee && dto.eventId) {
+      receiverAttendee = await this.prisma.attendee.findFirst({
+        where: {
+          userId: dto.receiverId,
+          eventId: dto.eventId,
+        },
+      });
+    }
 
     if (!receiverAttendee) {
       throw new NotFoundException('Receiver attendee not found');
     }
+
+    const receiverAttendeeId = receiverAttendee.id;
 
     // Check if request already exists
     const existingRequest = await this.prisma.connectionRequest.findUnique({
       where: {
         requesterId_receiverId_eventId: {
           requesterId: requesterAttendee.id,
-          receiverId: dto.receiverId,
-          eventId: dto.eventId || null
-        }
-      }
+          receiverId: receiverAttendeeId,
+          eventId: dto.eventId || null,
+        },
+      },
     });
 
-    if (existingRequest) {
+    // If request exists and is PENDING or ACCEPTED, throw error
+    if (existingRequest && (existingRequest.status === 'PENDING' || existingRequest.status === 'ACCEPTED')) {
       throw new ConflictException('Connection request already exists');
     }
 
-    // Create the connection request
-    const connectionRequest = await this.prisma.connectionRequest.create({
-      data: {
-        requesterId: requesterAttendee.id,
-        receiverId: dto.receiverId,
-        eventId: dto.eventId,
-        message: dto.message,
-        requestDateTime: new Date()
-      },
-      include: {
-        requester: {
-          include: {
-            user: true
-          }
+    // If request exists but is REJECTED, update it to PENDING (allow re-requesting)
+    let connectionRequest;
+    if (existingRequest && existingRequest.status === 'REJECTED') {
+      connectionRequest = await this.prisma.connectionRequest.update({
+        where: { id: existingRequest.id },
+        data: {
+          status: 'PENDING',
+          message: dto.message,
+          requestDateTime: new Date(),
+          responseDateTime: null // Clear previous response
         },
-        receiver: {
-          include: {
-            user: true
+        include: {
+          requester: {
+            include: {
+              user: true
+            }
+          },
+          receiver: {
+            include: {
+              user: true
+            }
           }
         }
-      }
-    });
+      });
+    } else {
+      // Create the connection request
+      connectionRequest = await this.prisma.connectionRequest.create({
+        data: {
+          requesterId: requesterAttendee.id,
+          receiverId: receiverAttendeeId,
+          eventId: dto.eventId,
+          message: dto.message,
+          requestDateTime: new Date()
+        },
+        include: {
+          requester: {
+            include: {
+              user: true
+            }
+          },
+          receiver: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+    }
 
     return {
       requestId: connectionRequest.id,
@@ -276,36 +318,60 @@ export class ConnectionRequestService {
     const request = await this.prisma.connectionRequest.findUnique({
       where: { id: requestId },
       include: {
-        requester: true
-      }
+        requester: true,
+        receiver: true,
+      },
     });
 
     if (!request) {
       throw new NotFoundException('Connection request not found');
     }
 
-    // Check if current user is the sender of this request
-    if (request.requester.userId !== currentUserId) {
-      throw new BadRequestException('You can only withdraw requests you sent');
+    const isSender = request.requester.userId === currentUserId;
+    const isReceiver = request.receiver.userId === currentUserId;
+
+    // Allow both parties to cancel/delete:
+    // - Sender can withdraw outgoing requests
+    // - Receiver can cancel incoming requests
+    // - Either party can remove an accepted connection (disconnect)
+    if (!isSender && !isReceiver) {
+      throw new BadRequestException('You can only withdraw/cancel requests you are part of');
     }
 
     await this.prisma.connectionRequest.delete({
       where: { id: requestId }
     });
 
-    return { message: 'Connection request withdrawn successfully' };
+    if (request.status === 'ACCEPTED') {
+      return { message: 'Connection removed successfully' };
+    }
+    return { message: isSender ? 'Connection request withdrawn successfully' : 'Connection request cancelled successfully' };
   }
 
   private formatAttendeeData(attendee: any) {
+    // Use user's current name if available and not default values, otherwise use attendee's stored name
+    const firstName = attendee.user?.firstname && attendee.user.firstname !== 'کاربر' 
+      ? attendee.user.firstname 
+      : attendee.firstName;
+    
+    const lastName = attendee.user?.lastname && attendee.user.lastname !== 'جدید' 
+      ? attendee.user.lastname 
+      : attendee.lastName;
+    
+    // Use user's current email if available and not temp email, otherwise use attendee's stored email
+    const email = attendee.user?.email && !attendee.user.email.includes('@vevent.temp')
+      ? attendee.user.email
+      : attendee.email;
+    
     return {
-      id: attendee.id,
-      firstName: attendee.firstName,
-      lastName: attendee.lastName,
-      company: attendee.showCompany ? attendee.company : null,
-      jobTitle: attendee.jobTitle,
-      email: attendee.showEmail ? attendee.email : null,
-      phone: attendee.showPhone ? attendee.phone : null,
-      avatar: attendee.avatar,
+      id: attendee.user?.id || attendee.id,
+      firstName,
+      lastName,
+      company: attendee.showCompany ? (attendee.user?.company || attendee.company) : null,
+      jobTitle: attendee.user?.jobTitle || attendee.jobTitle,
+      email: attendee.showEmail ? email : null,
+      phone: attendee.showPhone ? (attendee.user?.phone || attendee.phone) : null,
+      avatar: attendee.user?.avatarAssetId || attendee.avatar,
       role: attendee.role.toLowerCase()
     };
   }
