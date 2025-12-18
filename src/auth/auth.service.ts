@@ -26,7 +26,7 @@ export class AuthService {
   ) {}
 
   private getAccessExpiresSeconds() {
-    const s = process.env.JWT_ACCESS_EXPIRES_IN || '1h';
+    const s = process.env.JWT_ACCESS_EXPIRES_IN || '2d';
     // simple parser: m -> minutes, h -> hours, d -> days
     if (s.endsWith('m')) return parseInt(s) * 60;
     if (s.endsWith('h')) return parseInt(s) * 3600;
@@ -87,7 +87,7 @@ export class AuthService {
 
   async createAccessToken(userId: string) {
     const payload = { sub: userId };
-    return this.jwtService.signAsync(payload, { secret: process.env.JWT_ACCESS_SECRET || 'changeme', expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '1h' });
+    return this.jwtService.signAsync(payload, { secret: process.env.JWT_ACCESS_SECRET || 'changeme', expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '2d' });
   }
 
   cookieOptions(maxAgeSeconds: number) {
