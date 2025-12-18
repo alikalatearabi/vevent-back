@@ -8,6 +8,12 @@ export class ConnectionRequestService {
   constructor(@Inject('PRISMA') private readonly prisma: PrismaClient) {}
 
   async createConnectionRequest(currentUserId: string, dto: CreateConnectionRequestDto) {
+    // Load current user for fallback matching (phone/email) when attendee.userId isn't linked
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { id: true, phone: true, email: true },
+    });
+
     // Check if current user is either an attendee for the event OR the event creator
     let requesterAttendee = await this.prisma.attendee.findFirst({
       where: {
@@ -15,6 +21,27 @@ export class ConnectionRequestService {
         ...(dto.eventId && { eventId: dto.eventId })
       }
     });
+
+    // Fallback: if attendee record exists but wasn't linked to userId (guest registration),
+    // try matching by phone/email for the same event and auto-link it.
+    if (!requesterAttendee && dto.eventId && currentUser) {
+      const fallbackRequester = await this.prisma.attendee.findFirst({
+        where: {
+          eventId: dto.eventId,
+          OR: [
+            ...(currentUser.phone ? [{ phone: currentUser.phone }] : []),
+            ...(currentUser.email ? [{ email: currentUser.email }] : []),
+          ],
+        },
+      });
+
+      if (fallbackRequester) {
+        requesterAttendee = await this.prisma.attendee.update({
+          where: { id: fallbackRequester.id },
+          data: { userId: currentUserId },
+        });
+      }
+    }
 
     // If not an attendee, check if user is the event creator
     if (!requesterAttendee && dto.eventId) {
@@ -66,6 +93,33 @@ export class ConnectionRequestService {
           eventId: dto.eventId,
         },
       });
+    }
+
+    // Fallback 2: receiver registered as guest attendee (no userId linked yet) — match by phone/email
+    if (!receiverAttendee && dto.eventId) {
+      const receiverUser = await this.prisma.user.findUnique({
+        where: { id: dto.receiverId },
+        select: { id: true, phone: true, email: true },
+      });
+
+      if (receiverUser) {
+        const fallbackReceiver = await this.prisma.attendee.findFirst({
+          where: {
+            eventId: dto.eventId,
+            OR: [
+              ...(receiverUser.phone ? [{ phone: receiverUser.phone }] : []),
+              ...(receiverUser.email ? [{ email: receiverUser.email }] : []),
+            ],
+          },
+        });
+
+        if (fallbackReceiver) {
+          receiverAttendee = await this.prisma.attendee.update({
+            where: { id: fallbackReceiver.id },
+            data: { userId: receiverUser.id },
+          });
+        }
+      }
     }
 
     if (!receiverAttendee) {
