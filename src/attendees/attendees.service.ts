@@ -22,13 +22,40 @@ export class AttendeesService {
   }
 
   async getEventAttendees(eventId: string, currentUserId: string, role?: string) {
+    // Load current user for fallback matching (phone/email) when attendee.userId isn't linked
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { id: true, phone: true, email: true },
+    });
+
     // First, check if the current user is registered as an attendee for this event
-    const currentUserAttendee = await this.prisma.attendee.findFirst({
+    let currentUserAttendee = await this.prisma.attendee.findFirst({
       where: {
         eventId: eventId,
         userId: currentUserId
       }
     });
+
+    // Fallback: if attendee exists for this event but wasn't linked to userId (guest registration),
+    // try matching by phone/email and auto-link it.
+    if (!currentUserAttendee && currentUser) {
+      const fallback = await this.prisma.attendee.findFirst({
+        where: {
+          eventId,
+          OR: [
+            ...(currentUser.phone ? [{ phone: currentUser.phone }] : []),
+            ...(currentUser.email ? [{ email: currentUser.email }] : []),
+          ],
+        },
+      });
+
+      if (fallback) {
+        currentUserAttendee = await this.prisma.attendee.update({
+          where: { id: fallback.id },
+          data: { userId: currentUserId },
+        });
+      }
+    }
 
     // If not an attendee, check if user is the event creator
     let isEventCreator = false;
